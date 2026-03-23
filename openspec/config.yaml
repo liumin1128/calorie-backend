@@ -1,20 +1,22 @@
 schema: spec-driven
 
-# Project context (optional)
-# This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+context: |
+  项目: Calorie 卡路里管理应用 — 后端服务
+  技术栈: NestJS 11 + TypeScript 5.7 + MongoDB (Mongoose 9) + JWT 认证
+  包管理: pnpm workspace
+  编码语言: 中文注释和错误提示，代码使用英文
+  详细规格: 参见 openspec/current_state.md
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+rules:
+  proposal:
+    - 方案应与现有 NestJS 模块化架构保持一致
+    - 明确说明新增模块与现有 auth 模块的关系
+    - 包含数据模型（Mongoose Schema）设计
+  tasks:
+    - 每个任务应对应一个独立的代码变更单元
+    - 遵循现有的 Controller → Service → Schema 分层模式
+    - 新模块应包含 DTO 校验
+    - 每个 API 端点必须包含 JSDoc 注释（@description, @param, @returns, @throws）
+    - 工具方法按级别放置：全局 → src/common/utils/，模块级 → src/<module>/utils/
+    - Controller 禁止包含业务逻辑，仅做路由转发
+    - Service 方法按「校验 → 处理 → 持久化 → 响应构建」组织，控制圈复杂度
