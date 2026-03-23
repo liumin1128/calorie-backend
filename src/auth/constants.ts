@@ -1,1 +1,1 @@
-export const JWT_SECRET = 'calorie-app-jwt-secret-key-2026';
+// 配置项已迁移至 .env 环境变量文件
