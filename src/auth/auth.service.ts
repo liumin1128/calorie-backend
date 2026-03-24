@@ -10,12 +10,14 @@ import * as bcrypt from 'bcrypt';
 import { User, UserDocument } from './schemas/user.schema';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { DynamicDataService } from '../dynamic-data/dynamic-data.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     private jwtService: JwtService,
+    private dynamicDataService: DynamicDataService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -53,14 +55,27 @@ export class AuthService {
     return user;
   }
 
-  private buildResponse(user: UserDocument) {
+  private async buildResponse(user: UserDocument) {
     const payload = { sub: user._id, email: user.email };
+    const userId = user._id.toString();
+
+    const latestDynamicData =
+      await this.dynamicDataService.findLatestByCategories(userId, [
+        'height',
+        'weight',
+      ]);
+
     return {
       access_token: this.jwtService.sign(payload),
       user: {
         id: user._id,
         email: user.email,
         nickname: user.nickname,
+        gender: user.gender ?? null,
+        birthday: user.birthday ?? null,
+        signature: user.signature ?? null,
+        latestHeight: latestDynamicData.get('height') ?? null,
+        latestWeight: latestDynamicData.get('weight') ?? null,
       },
     };
   }

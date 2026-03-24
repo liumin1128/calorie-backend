@@ -5,6 +5,8 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { CalorieModule } from './calorie/calorie.module';
+import { UserModule } from './user/user.module';
+import { DynamicDataModule } from './dynamic-data/dynamic-data.module';
 
 @Module({
   imports: [
@@ -17,6 +19,8 @@ import { CalorieModule } from './calorie/calorie.module';
     }),
     AuthModule,
     CalorieModule,
+    UserModule,
+    DynamicDataModule,
   ],
   controllers: [AppController],
   providers: [AppService],

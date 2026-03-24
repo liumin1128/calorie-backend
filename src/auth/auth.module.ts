@@ -7,6 +7,7 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
 import { User, UserSchema } from './schemas/user.schema';
+import { DynamicDataModule } from '../dynamic-data/dynamic-data.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { User, UserSchema } from './schemas/user.schema';
         signOptions: { expiresIn: '7d' },
       }),
     }),
+    DynamicDataModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],

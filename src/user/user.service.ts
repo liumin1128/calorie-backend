@@ -1,0 +1,56 @@
+import { Injectable } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { User, UserDocument } from '../auth/schemas/user.schema';
+import { UpdateProfileDto } from './dto/update-profile.dto';
+import { DynamicDataService } from '../dynamic-data/dynamic-data.service';
+
+@Injectable()
+export class UserService {
+  constructor(
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
+    private dynamicDataService: DynamicDataService,
+  ) {}
+
+  /**
+   * 部分更新用户基础信息
+   * @param userId - 用户 ID
+   * @param dto - 需要更新的字段（均为可选）
+   * @returns 更新后的用户信息（不含密码）
+   */
+  async updateProfile(userId: string, dto: UpdateProfileDto) {
+    const user = await this.userModel
+      .findByIdAndUpdate(userId, { $set: dto }, { new: true })
+      .select('-password');
+    return user;
+  }
+
+  /**
+   * 获取完整用户信息（基础资料 + 最新身高体重）
+   * @param userId - 用户 ID
+   * @returns 用户基础信息及最新动态数据
+   */
+  async getFullProfile(userId: string) {
+    const user = await this.userModel.findById(userId).select('-password');
+    if (!user) {
+      return null;
+    }
+
+    const latestDynamicData =
+      await this.dynamicDataService.findLatestByCategories(userId, [
+        'height',
+        'weight',
+      ]);
+
+    return {
+      id: user._id,
+      email: user.email,
+      nickname: user.nickname,
+      gender: user.gender ?? null,
+      birthday: user.birthday ?? null,
+      signature: user.signature ?? null,
+      latestHeight: latestDynamicData.get('height') ?? null,
+      latestWeight: latestDynamicData.get('weight') ?? null,
+    };
+  }
+}
