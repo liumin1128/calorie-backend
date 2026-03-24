@@ -110,5 +110,49 @@ describe('UserService', () => {
       expect(result?.latestHeight).toBeNull();
       expect(result?.latestWeight).toBeNull();
     });
+
+    it('should pass beforeDate (end of day) when date is provided', async () => {
+      const mockUser = {
+        _id: 'user-id',
+        email: 'test@test.com',
+        nickname: 'test',
+      };
+      mockUserModel.findById.mockReturnValue({
+        select: jest.fn().mockResolvedValue(mockUser),
+      });
+      mockDynamicDataService.findLatestByCategories.mockResolvedValue(
+        new Map(),
+      );
+
+      const queryDate = new Date('2026-03-15');
+      await service.getFullProfile('user-id', queryDate);
+
+      const beforeDate =
+        mockDynamicDataService.findLatestByCategories.mock.calls[0][2];
+      expect(beforeDate).toBeDefined();
+      expect(beforeDate.getHours()).toBe(23);
+      expect(beforeDate.getMinutes()).toBe(59);
+      expect(beforeDate.getSeconds()).toBe(59);
+    });
+
+    it('should not pass beforeDate when date is omitted', async () => {
+      const mockUser = {
+        _id: 'user-id',
+        email: 'test@test.com',
+        nickname: 'test',
+      };
+      mockUserModel.findById.mockReturnValue({
+        select: jest.fn().mockResolvedValue(mockUser),
+      });
+      mockDynamicDataService.findLatestByCategories.mockResolvedValue(
+        new Map(),
+      );
+
+      await service.getFullProfile('user-id');
+
+      const beforeDate =
+        mockDynamicDataService.findLatestByCategories.mock.calls[0][2];
+      expect(beforeDate).toBeUndefined();
+    });
   });
 });

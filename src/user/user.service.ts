@@ -28,19 +28,27 @@ export class UserService {
   /**
    * 获取完整用户信息（基础资料 + 最新身高体重）
    * @param userId - 用户 ID
+   * @param date - 截止日期（可选），传入时返回截止到该日期的最新动态数据
    * @returns 用户基础信息及最新动态数据
    */
-  async getFullProfile(userId: string) {
+  async getFullProfile(userId: string, date?: Date) {
     const user = await this.userModel.findById(userId).select('-password');
     if (!user) {
       return null;
     }
 
+    let beforeDate: Date | undefined;
+    if (date) {
+      beforeDate = new Date(date);
+      beforeDate.setHours(23, 59, 59, 999);
+    }
+
     const latestDynamicData =
-      await this.dynamicDataService.findLatestByCategories(userId, [
-        'height',
-        'weight',
-      ]);
+      await this.dynamicDataService.findLatestByCategories(
+        userId,
+        ['height', 'weight'],
+        beforeDate,
+      );
 
     return {
       id: user._id,

@@ -66,7 +66,7 @@ describe('DynamicDataService', () => {
   });
 
   describe('findLatest', () => {
-    it('should query within day range and sort by recordedAt desc', async () => {
+    it('should query with $lte (截止到该日期) and sort by recordedAt desc', async () => {
       const mockResult = { category: 'weight', value: 70.5 };
       mockDynamicDataModel.findOne.mockReturnValue({
         sort: jest.fn().mockResolvedValue(mockResult),
@@ -78,9 +78,10 @@ describe('DynamicDataService', () => {
         new Date('2026-03-20'),
       );
 
-      expect(mockDynamicDataModel.findOne).toHaveBeenCalledWith(
-        expect.objectContaining({ category: 'weight' }),
-      );
+      const callArg = mockDynamicDataModel.findOne.mock.calls[0][0];
+      expect(callArg.category).toBe('weight');
+      expect(callArg.recordedAt.$lte).toBeDefined();
+      expect(callArg.recordedAt.$gte).toBeUndefined();
       expect(result).toEqual(mockResult);
     });
 
@@ -154,6 +155,39 @@ describe('DynamicDataService', () => {
         ['height', 'weight'],
       );
       expect(result.size).toBe(0);
+    });
+
+    it('should include recordedAt $lte condition when beforeDate is provided', async () => {
+      const beforeDate = new Date('2026-03-15T23:59:59.999Z');
+      mockDynamicDataModel.aggregate.mockResolvedValue([
+        { _id: 'height', value: 170.0, recordedAt: new Date('2026-03-10') },
+      ]);
+
+      const result = await service.findLatestByCategories(
+        '507f1f77bcf86cd799439011',
+        ['height', 'weight'],
+        beforeDate,
+      );
+
+      const matchStage =
+        mockDynamicDataModel.aggregate.mock.calls[0][0][0].$match;
+      expect(matchStage.recordedAt).toEqual({ $lte: beforeDate });
+      expect(result.get('height')).toEqual({
+        value: 170.0,
+        recordedAt: new Date('2026-03-10'),
+      });
+    });
+
+    it('should not include recordedAt condition when beforeDate is omitted', async () => {
+      mockDynamicDataModel.aggregate.mockResolvedValue([]);
+
+      await service.findLatestByCategories('507f1f77bcf86cd799439011', [
+        'height',
+      ]);
+
+      const matchStage =
+        mockDynamicDataModel.aggregate.mock.calls[0][0][0].$match;
+      expect(matchStage.recordedAt).toBeUndefined();
     });
   });
 });

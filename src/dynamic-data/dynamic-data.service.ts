@@ -30,21 +30,21 @@ export class DynamicDataService {
   }
 
   /**
-   * 时间点查询——取指定日期当天最新一条数据
+   * 时间点查询——取截止到指定日期的最新一条数据
    * @param userId - 用户 ID
    * @param category - 数据类别（如 height, weight）
-   * @param date - 查询日期，默认当天
-   * @returns 当天最新一条记录，无数据返回 null
+   * @param date - 截止日期，默认当天
+   * @returns 截止到该日期的最新一条记录，无数据返回 null
    */
   async findLatest(userId: string, category: string, date?: Date) {
     const targetDate = date ?? new Date();
-    const { dayStart, dayEnd } = this.getDayRange(targetDate);
+    const { dayEnd } = this.getDayRange(targetDate);
 
     return this.dynamicDataModel
       .findOne({
         userId: new Types.ObjectId(userId),
         category,
-        recordedAt: { $gte: dayStart, $lte: dayEnd },
+        recordedAt: { $lte: dayEnd },
       })
       .sort({ recordedAt: -1 });
   }
@@ -99,21 +99,28 @@ export class DynamicDataService {
   }
 
   /**
-   * 批量查询多个类别的最新值（全局最新，不限日期）
+   * 批量查询多个类别的最新值
    * @param userId - 用户 ID
    * @param categories - 类别数组（如 ['height', 'weight']）
+   * @param beforeDate - 截止日期（可选），传入时限制 recordedAt <= beforeDate
    * @returns Map<category, { value, recordedAt }>
    */
   async findLatestByCategories(
     userId: string,
     categories: string[],
+    beforeDate?: Date,
   ): Promise<Map<string, { value: number; recordedAt: Date }>> {
+    const matchCondition: Record<string, any> = {
+      userId: new Types.ObjectId(userId),
+      category: { $in: categories },
+    };
+    if (beforeDate) {
+      matchCondition.recordedAt = { $lte: beforeDate };
+    }
+
     const results = await this.dynamicDataModel.aggregate([
       {
-        $match: {
-          userId: new Types.ObjectId(userId),
-          category: { $in: categories },
-        },
+        $match: matchCondition,
       },
       { $sort: { recordedAt: -1 } },
       {
