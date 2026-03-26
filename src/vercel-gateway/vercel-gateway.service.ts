@@ -1,0 +1,154 @@
+import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import { HttpService } from '@nestjs/axios';
+import { ConfigService } from '@nestjs/config';
+import { firstValueFrom } from 'rxjs';
+import { CalorieService } from '../calorie/calorie.service';
+import { UserService } from '../user/user.service';
+
+const SYSTEM_PROMPT = `基于用户提供的身体数据、目标和近7天饮食运动记录，直接给出个性化健康建议。
+
+输出要求：
+1. 不要介绍自己是谁，不要寒暄，直接进入建议。
+2. 内容尽量简洁，优先给用户最有用、最可执行的结论。
+3. 语言要自然、生动、轻快，但不要浮夸。
+4. 建议按这三个部分组织：当前判断、接下来怎么做、需要注意什么。
+5. 尽量给出具体动作、食物、运动和习惯建议，少说空话。
+6. 如果用户数据不足，直接指出缺什么，并给出在信息有限时也能立刻执行的建议。
+
+安全要求：
+1. 不提供极端节食、过度运动或有明显风险的方案。
+2. 如果目标体重、热量摄入或身体状态存在健康风险，要明确提醒，但语气保持温和。
+3. 不能替代医生诊断；涉及明显疾病风险时，建议及时就医或咨询专业医生。`;
+
+@Injectable()
+export class VercelGatewayService {
+  private readonly token: string;
+  private readonly baseUrl: string;
+  private readonly model: string;
+
+  constructor(
+    private readonly httpService: HttpService,
+    private readonly configService: ConfigService,
+    private readonly userService: UserService,
+    private readonly calorieService: CalorieService,
+  ) {
+    const token = this.configService.get<string>('VERCEL_AI_TOKEN');
+    if (!token) {
+      throw new Error('VERCEL_AI_TOKEN is not configured');
+    }
+    this.token = token;
+    const configuredBaseUrl =
+      this.configService.get<string>('VERCEL_AI_GATEWAY_URL') ??
+      'https://ai-gateway.vercel.sh';
+    this.baseUrl = configuredBaseUrl.replace(/\/+$/, '').replace(/\/v1$/, '');
+    this.model =
+      this.configService.get<string>('VERCEL_AI_MODEL') ??
+      'deepseek/deepseek-v3.2';
+  }
+
+  /**
+   * 通用 HTTP 基础方法：注入认证头、统一错误处理、30秒超时
+   */
+  private async request<T>(
+    method: string,
+    path: string,
+    body?: unknown,
+  ): Promise<T> {
+    try {
+      const response = await firstValueFrom(
+        this.httpService.request<T>({
+          method,
+          url: `${this.baseUrl}${path}`,
+          headers: {
+            Authorization: `Bearer ${this.token}`,
+            'Content-Type': 'application/json',
+          },
+          data: body,
+          timeout: 30000,
+        }),
+      );
+      return response.data;
+    } catch (error: any) {
+      const status = error?.response?.status ?? HttpStatus.BAD_GATEWAY;
+      throw new HttpException('AI 网关请求失败', status);
+    }
+  }
+
+  /**
+   * 验证 Token 已配置，返回网关就绪状态（不发起外部请求）
+   */
+  ping() {
+    return { status: 'ok', gateway: 'vercel-ai-gateway', model: this.model };
+  }
+
+  /**
+   * 获取 AI 个性化健康建议
+   * @param userId 当前用户 ID
+   * @param question 用户问题（最大 500 字符）
+   * @returns { suggestion, model }
+   */
+  async getSuggestion(userId: string, question: string) {
+    const [profile, summary] = await Promise.all([
+      this.userService.getFullProfile(userId),
+      this.calorieService.summarizeLast7Days(userId),
+    ]);
+
+    const formatEntry = (entry: {
+      title: string;
+      calories: number;
+      description: string;
+      entryDate: Date;
+    }) => {
+      const d = new Date(entry.entryDate);
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      const hh = String(d.getHours()).padStart(2, '0');
+      const min = String(d.getMinutes()).padStart(2, '0');
+      const desc = entry.description ? ` | ${entry.description}` : '';
+      return `- ${mm}/${dd} ${hh}:${min}  ${entry.title}（${entry.calories} kcal）${desc}`;
+    };
+
+    const intakeLines = summary.intakeEntries.length
+      ? summary.intakeEntries.map(formatEntry).join('\n')
+      : '- 暂无饮食记录';
+
+    const burnLines = summary.burnEntries.length
+      ? summary.burnEntries.map(formatEntry).join('\n')
+      : '- 暂无运动记录';
+
+    const intakeAvg = Math.round(summary.intakeTotal / 7);
+    const burnAvg = Math.round(summary.burnTotal / 7);
+    const netAvg = intakeAvg - burnAvg;
+
+    const userMessage = `基础信息：
+身高：${profile?.latestHeight?.value ?? '暂无记录'} cm
+当前体重：${profile?.latestWeight?.value ?? '暂无记录'} kg
+目标体重：${profile?.targetWeight ?? '未设置'} kg
+健康状态简述：${profile?.healthConditions?.join(', ') ?? '暂无填写'}
+
+近7日饮食记录（摄入）：
+${intakeLines}
+
+近7日运动记录（消耗）：
+${burnLines}
+
+统计汇总：
+- 摄入：共 ${summary.intakeTotal} kcal，日均 ${intakeAvg} kcal，${summary.intakeCount} 条记录
+- 消耗：共 ${summary.burnTotal} kcal，日均 ${burnAvg} kcal，${summary.burnCount} 条记录
+- 日均净热量差（摄入-消耗）：${netAvg} kcal
+
+我的问题：${question}`;
+
+    const result = await this.request<any>('POST', '/v1/chat/completions', {
+      model: this.model,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: userMessage },
+      ],
+      max_tokens: 800,
+    });
+
+    const suggestion = result?.choices?.[0]?.message?.content ?? '暂无建议';
+    return { suggestion, model: this.model };
+  }
+}

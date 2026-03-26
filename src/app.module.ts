@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { CalorieModule } from './calorie/calorie.module';
 import { UserModule } from './user/user.module';
 import { DynamicDataModule } from './dynamic-data/dynamic-data.module';
+import { VercelGatewayModule } from './vercel-gateway/vercel-gateway.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { DynamicDataModule } from './dynamic-data/dynamic-data.module';
     CalorieModule,
     UserModule,
     DynamicDataModule,
+    VercelGatewayModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -15,5 +15,6 @@ import {
   ],
   controllers: [CalorieController],
   providers: [CalorieService],
+  exports: [CalorieService],
 })
 export class CalorieModule {}

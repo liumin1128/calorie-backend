@@ -4,6 +4,7 @@ import { Model } from 'mongoose';
 import {
   CalorieEntry,
   CalorieEntryDocument,
+  CalorieType,
 } from './schemas/calorie-entry.schema';
 import { CreateCalorieEntryDto } from './dto/create-calorie-entry.dto';
 import { UpdateCalorieEntryDto } from './dto/update-calorie-entry.dto';
@@ -107,5 +108,63 @@ export class CalorieService {
       throw new NotFoundException('条目不存在');
     }
     return entry;
+  }
+
+  /**
+   * @description 统计近 7 天卡路里摄入与消耗数据（含详细条目列表）
+   * @param userId 当前用户 ID
+   * @returns 摄入/消耗总量、条数、详细条目列表（按日期降序）
+   */
+  async summarizeLast7Days(userId: string) {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 7);
+    startDate.setHours(0, 0, 0, 0);
+
+    const entries = await this.calorieModel
+      .find({ userId, entryDate: { $gte: startDate } })
+      .sort({ entryDate: -1 })
+      .select('type title calories description entryDate')
+      .lean()
+      .exec();
+
+    const intakeEntries: {
+      title: string;
+      calories: number;
+      description: string;
+      entryDate: Date;
+    }[] = [];
+    const burnEntries: {
+      title: string;
+      calories: number;
+      description: string;
+      entryDate: Date;
+    }[] = [];
+    let intakeTotal = 0;
+    let burnTotal = 0;
+
+    for (const entry of entries) {
+      const item = {
+        title: entry.title,
+        calories: entry.calories,
+        description: entry.description ?? '',
+        entryDate: entry.entryDate,
+      };
+      if (entry.type === CalorieType.INTAKE) {
+        intakeEntries.push(item);
+        intakeTotal += entry.calories;
+      } else {
+        burnEntries.push(item);
+        burnTotal += entry.calories;
+      }
+    }
+
+    return {
+      intakeTotal,
+      intakeCount: intakeEntries.length,
+      burnTotal,
+      burnCount: burnEntries.length,
+      intakeEntries,
+      burnEntries,
+    };
   }
 }
