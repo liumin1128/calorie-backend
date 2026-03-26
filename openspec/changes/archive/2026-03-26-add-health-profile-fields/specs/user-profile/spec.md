@@ -1,3 +1,5 @@
+## MODIFIED Requirements
+
 ### Requirement: 更新用户基础信息
 系统 SHALL 提供 `PUT /user/profile` 接口，允许已认证用户更新自己的基础个人信息。
 

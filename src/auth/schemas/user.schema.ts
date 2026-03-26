@@ -28,6 +28,12 @@ export class User {
 
   @Prop({ trim: true, maxlength: 200 })
   signature?: string;
+
+  @Prop({ type: Number, min: 30, max: 300 })
+  targetWeight?: number;
+
+  @Prop({ type: [String] })
+  healthConditions?: string[];
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

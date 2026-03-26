@@ -57,6 +57,10 @@ export class UserService {
       gender: user.gender ?? null,
       birthday: user.birthday ?? null,
       signature: user.signature ?? null,
+      targetWeight: user.targetWeight ?? null,
+      healthConditions: user.healthConditions?.length
+        ? user.healthConditions
+        : null,
       latestHeight: latestDynamicData.get('height') ?? null,
       latestWeight: latestDynamicData.get('weight') ?? null,
     };
