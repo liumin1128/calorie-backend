@@ -1,9 +1,8 @@
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
-import { HttpService } from '@nestjs/axios';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { firstValueFrom } from 'rxjs';
 import { CalorieService } from '../calorie/calorie.service';
 import { UserService } from '../user/user.service';
+import { VercelAiClient } from './vercel-ai.client';
 
 const SYSTEM_PROMPT = `基于用户提供的身体数据、目标和近7天饮食运动记录，直接给出个性化健康建议。
 
@@ -22,63 +21,22 @@ const SYSTEM_PROMPT = `基于用户提供的身体数据、目标和近7天饮�
 
 @Injectable()
 export class VercelGatewayService {
-  private readonly token: string;
-  private readonly baseUrl: string;
-  private readonly model: string;
-
   constructor(
-    private readonly httpService: HttpService,
+    private readonly aiClient: VercelAiClient,
     private readonly configService: ConfigService,
     private readonly userService: UserService,
     private readonly calorieService: CalorieService,
-  ) {
-    const token = this.configService.get<string>('VERCEL_AI_TOKEN');
-    if (!token) {
-      throw new Error('VERCEL_AI_TOKEN is not configured');
-    }
-    this.token = token;
-    const configuredBaseUrl =
-      this.configService.get<string>('VERCEL_AI_GATEWAY_URL') ??
-      'https://ai-gateway.vercel.sh';
-    this.baseUrl = configuredBaseUrl.replace(/\/+$/, '').replace(/\/v1$/, '');
-    this.model =
-      this.configService.get<string>('VERCEL_AI_MODEL') ??
-      'deepseek/deepseek-v3.2';
-  }
-
-  /**
-   * 通用 HTTP 基础方法：注入认证头、统一错误处理、30秒超时
-   */
-  private async request<T>(
-    method: string,
-    path: string,
-    body?: unknown,
-  ): Promise<T> {
-    try {
-      const response = await firstValueFrom(
-        this.httpService.request<T>({
-          method,
-          url: `${this.baseUrl}${path}`,
-          headers: {
-            Authorization: `Bearer ${this.token}`,
-            'Content-Type': 'application/json',
-          },
-          data: body,
-          timeout: 30000,
-        }),
-      );
-      return response.data;
-    } catch (error: any) {
-      const status = error?.response?.status ?? HttpStatus.BAD_GATEWAY;
-      throw new HttpException('AI 网关请求失败', status);
-    }
-  }
+  ) {}
 
   /**
    * 验证 Token 已配置，返回网关就绪状态（不发起外部请求）
    */
   ping() {
-    return { status: 'ok', gateway: 'vercel-ai-gateway', model: this.model };
+    return {
+      status: 'ok',
+      gateway: 'vercel-ai-gateway',
+      model: this.aiClient.model,
+    };
   }
 
   /**
@@ -139,16 +97,14 @@ ${burnLines}
 
 我的问题：${question}`;
 
-    const result = await this.request<any>('POST', '/v1/chat/completions', {
-      model: this.model,
-      messages: [
+    const suggestion = await this.aiClient.chat(
+      [
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: userMessage },
       ],
-      max_tokens: 800,
-    });
+      800,
+    );
 
-    const suggestion = result?.choices?.[0]?.message?.content ?? '暂无建议';
-    return { suggestion, model: this.model };
+    return { suggestion: suggestion || '暂无建议', model: this.aiClient.model };
   }
 }
