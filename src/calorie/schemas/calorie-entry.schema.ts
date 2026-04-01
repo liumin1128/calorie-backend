@@ -8,6 +8,11 @@ export enum CalorieType {
   BURN = 'burn',
 }
 
+export enum EntrySource {
+  MANUAL = 'manual',
+  HEALTHKIT = 'healthkit',
+}
+
 @Schema({ timestamps: true })
 export class CalorieEntry {
   @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
@@ -30,6 +35,9 @@ export class CalorieEntry {
 
   @Prop({ required: true })
   entryDate: Date;
+
+  @Prop({ enum: EntrySource, default: EntrySource.MANUAL })
+  source: EntrySource;
 }
 
 export const CalorieEntrySchema = SchemaFactory.createForClass(CalorieEntry);

@@ -35,11 +35,15 @@ export class CalorieService {
    * @returns { data, total }
    */
   async findAll(userId: string, query: QueryCalorieEntryDto) {
-    const { page = 1, pageSize = 20, startDate, endDate, type } = query;
+    const { page = 1, pageSize = 20, startDate, endDate, type, source } = query;
     const filter: Record<string, any> = { userId };
 
     if (type) {
       filter.type = type;
+    }
+
+    if (source) {
+      filter.source = source;
     }
 
     if (startDate || endDate) {

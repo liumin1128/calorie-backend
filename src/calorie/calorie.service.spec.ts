@@ -1,7 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/mongoose';
 import { CalorieService } from './calorie.service';
-import { CalorieEntry, CalorieType } from './schemas/calorie-entry.schema';
+import {
+  CalorieEntry,
+  CalorieType,
+  EntrySource,
+} from './schemas/calorie-entry.schema';
 
 describe('CalorieService - getDailySummary', () => {
   let service: CalorieService;
@@ -99,5 +103,80 @@ describe('CalorieService - getDailySummary', () => {
     const matchDate = pipeline[0].$match.entryDate;
     expect(matchDate.$gte).toEqual(new Date('2026-03-01'));
     expect(matchDate.$lte).toEqual(new Date('2026-03-07T23:59:59.999Z'));
+  });
+});
+
+describe('CalorieService - source 字段', () => {
+  let service: CalorieService;
+  let mockModel: any;
+
+  beforeEach(async () => {
+    mockModel = {
+      create: jest.fn(),
+      find: jest.fn().mockReturnValue({
+        sort: jest.fn().mockReturnValue({
+          skip: jest.fn().mockReturnValue({
+            limit: jest
+              .fn()
+              .mockReturnValue({ exec: jest.fn().mockResolvedValue([]) }),
+          }),
+        }),
+      }),
+      countDocuments: jest
+        .fn()
+        .mockReturnValue({ exec: jest.fn().mockResolvedValue(0) }),
+      aggregate: jest.fn().mockReturnValue({ exec: jest.fn() }),
+      findOne: jest.fn().mockReturnValue({ exec: jest.fn() }),
+      findOneAndUpdate: jest.fn().mockReturnValue({ exec: jest.fn() }),
+      findOneAndDelete: jest.fn().mockReturnValue({ exec: jest.fn() }),
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        CalorieService,
+        { provide: getModelToken(CalorieEntry.name), useValue: mockModel },
+      ],
+    }).compile();
+
+    service = module.get<CalorieService>(CalorieService);
+  });
+
+  it('创建条目时应传递 source 字段', async () => {
+    mockModel.create.mockResolvedValue({ source: EntrySource.HEALTHKIT });
+
+    await service.create('userId', {
+      type: CalorieType.INTAKE,
+      calories: 500,
+      title: '午餐',
+      entryDate: '2026-04-01T12:00:00Z',
+      source: EntrySource.HEALTHKIT,
+    });
+
+    expect(mockModel.create).toHaveBeenCalledWith(
+      expect.objectContaining({ source: EntrySource.HEALTHKIT }),
+    );
+  });
+
+  it('按 source=manual 查询时应直接匹配', async () => {
+    await service.findAll('userId', { source: EntrySource.MANUAL });
+
+    const filter = mockModel.find.mock.calls[0][0];
+    expect(filter.source).toBe(EntrySource.MANUAL);
+  });
+
+  it('按 source=healthkit 查询时应直接匹配', async () => {
+    await service.findAll('userId', { source: EntrySource.HEALTHKIT });
+
+    const filter = mockModel.find.mock.calls[0][0];
+    expect(filter.source).toBe(EntrySource.HEALTHKIT);
+    expect(filter.$or).toBeUndefined();
+  });
+
+  it('不指定 source 查询时不应添加 source 过滤', async () => {
+    await service.findAll('userId', {});
+
+    const filter = mockModel.find.mock.calls[0][0];
+    expect(filter.source).toBeUndefined();
+    expect(filter.$or).toBeUndefined();
   });
 });
