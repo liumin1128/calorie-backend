@@ -11,7 +11,7 @@ import {
   Request,
   Res,
 } from '@nestjs/common';
-import { Response } from 'express';
+import type { Response } from 'express';
 import { CalorieService } from './calorie.service';
 import { CreateCalorieEntryDto } from './dto/create-calorie-entry.dto';
 import { UpdateCalorieEntryDto } from './dto/update-calorie-entry.dto';
