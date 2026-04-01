@@ -82,7 +82,7 @@ describe('CalorieService - getDailySummary', () => {
     });
 
     const pipeline = mockAggregate.mock.calls[0][0];
-    expect(pipeline[0].$match.userId.toString()).toBe(userId);
+    expect(pipeline[0].$match.userId).toBe(userId);
   });
 
   it('应使用正确的日期范围进行 $match 过滤', async () => {
@@ -98,6 +98,6 @@ describe('CalorieService - getDailySummary', () => {
     const pipeline = mockAggregate.mock.calls[0][0];
     const matchDate = pipeline[0].$match.entryDate;
     expect(matchDate.$gte).toEqual(new Date('2026-03-01'));
-    expect(matchDate.$lte.getDate()).toBe(new Date('2026-03-07').getDate());
+    expect(matchDate.$lte).toEqual(new Date('2026-03-07T23:59:59.999Z'));
   });
 });

@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { Model } from 'mongoose';
 import {
   CalorieEntry,
   CalorieEntryDocument,
@@ -123,12 +123,12 @@ export class CalorieService {
   ): Promise<Record<string, { totalIntake: number; totalBurn: number }>> {
     const start = new Date(dto.startDate);
     const end = new Date(dto.endDate);
-    end.setHours(23, 59, 59, 999);
+    end.setUTCHours(23, 59, 59, 999);
 
     const pipeline = [
       {
         $match: {
-          userId: new Types.ObjectId(userId),
+          userId: userId,
           entryDate: { $gte: start, $lte: end },
         },
       },
