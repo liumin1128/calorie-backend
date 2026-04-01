@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import {
   CalorieEntry,
   CalorieEntryDocument,
@@ -9,6 +9,7 @@ import {
 import { CreateCalorieEntryDto } from './dto/create-calorie-entry.dto';
 import { UpdateCalorieEntryDto } from './dto/update-calorie-entry.dto';
 import { QueryCalorieEntryDto } from './dto/query-calorie-entry.dto';
+import { QueryDailySummaryDto } from './dto/query-daily-summary.dto';
 
 @Injectable()
 export class CalorieService {
@@ -108,6 +109,57 @@ export class CalorieService {
       throw new NotFoundException('条目不存在');
     }
     return entry;
+  }
+
+  /**
+   * @description 查询指定时间范围内每日卡路里摄入和消耗汇总
+   * @param userId 当前用户 ID
+   * @param dto 查询参数（startDate, endDate）
+   * @returns 以日期为 key 的对象，value 包含 totalIntake 和 totalBurn
+   */
+  async getDailySummary(
+    userId: string,
+    dto: QueryDailySummaryDto,
+  ): Promise<Record<string, { totalIntake: number; totalBurn: number }>> {
+    const start = new Date(dto.startDate);
+    const end = new Date(dto.endDate);
+    end.setHours(23, 59, 59, 999);
+
+    const pipeline = [
+      {
+        $match: {
+          userId: new Types.ObjectId(userId),
+          entryDate: { $gte: start, $lte: end },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            date: { $dateToString: { format: '%Y-%m-%d', date: '$entryDate' } },
+            type: '$type',
+          },
+          total: { $sum: '$calories' },
+        },
+      },
+    ];
+
+    const results = await this.calorieModel.aggregate(pipeline).exec();
+
+    const summary: Record<string, { totalIntake: number; totalBurn: number }> =
+      {};
+    for (const row of results) {
+      const date = row._id.date;
+      if (!summary[date]) {
+        summary[date] = { totalIntake: 0, totalBurn: 0 };
+      }
+      if (row._id.type === CalorieType.INTAKE) {
+        summary[date].totalIntake = row.total;
+      } else {
+        summary[date].totalBurn = row.total;
+      }
+    }
+
+    return summary;
   }
 
   /**

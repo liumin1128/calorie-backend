@@ -14,6 +14,7 @@ import { CalorieService } from './calorie.service';
 import { CreateCalorieEntryDto } from './dto/create-calorie-entry.dto';
 import { UpdateCalorieEntryDto } from './dto/update-calorie-entry.dto';
 import { QueryCalorieEntryDto } from './dto/query-calorie-entry.dto';
+import { QueryDailySummaryDto } from './dto/query-daily-summary.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @UseGuards(JwtAuthGuard)
@@ -41,6 +42,17 @@ export class CalorieController {
   @Get()
   findAll(@Request() req, @Query() query: QueryCalorieEntryDto) {
     return this.calorieService.findAll(req.user.sub, query);
+  }
+
+  /**
+   * @description 查询指定时间范围内每日卡路里摄入和消耗汇总
+   * @param req JWT 请求对象
+   * @param query 查询参数（startDate, endDate）
+   * @returns 以日期为 key 的对象，value 包含 totalIntake 和 totalBurn
+   */
+  @Get('daily-summary')
+  getDailySummary(@Request() req, @Query() query: QueryDailySummaryDto) {
+    return this.calorieService.getDailySummary(req.user.sub, query);
   }
 
   /**
