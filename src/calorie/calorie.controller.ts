@@ -9,7 +9,9 @@ import {
   Query,
   UseGuards,
   Request,
+  Res,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { CalorieService } from './calorie.service';
 import { CreateCalorieEntryDto } from './dto/create-calorie-entry.dto';
 import { UpdateCalorieEntryDto } from './dto/update-calorie-entry.dto';
@@ -23,14 +25,20 @@ export class CalorieController {
   constructor(private readonly calorieService: CalorieService) {}
 
   /**
-   * @description 创建卡路里条目
+   * @description 创建或更新卡路里条目（基于 userId + entryDate + type 去重）
    * @param req JWT 请求对象
    * @param dto 创建参数
-   * @returns 新创建的条目
+   * @param res Express Response
+   * @returns 条目数据，新建返回 201，更新返回 200
    */
   @Post()
-  create(@Request() req, @Body() dto: CreateCalorieEntryDto) {
-    return this.calorieService.create(req.user.sub, dto);
+  async create(
+    @Request() req,
+    @Body() dto: CreateCalorieEntryDto,
+    @Res() res: Response,
+  ) {
+    const { data, isNew } = await this.calorieService.create(req.user.sub, dto);
+    return res.status(isNew ? 201 : 200).json(data);
   }
 
   /**

@@ -42,4 +42,7 @@ export class CalorieEntry {
 
 export const CalorieEntrySchema = SchemaFactory.createForClass(CalorieEntry);
 
-CalorieEntrySchema.index({ userId: 1, entryDate: -1 });
+CalorieEntrySchema.index(
+  { userId: 1, entryDate: 1, type: 1 },
+  { unique: true },
+);
