@@ -38,4 +38,8 @@ export class CreateCalorieEntryDto {
   @IsEnum(EntrySource)
   @IsOptional()
   source?: EntrySource;
+
+  @IsString()
+  @IsOptional()
+  externalId?: string;
 }

@@ -154,14 +154,11 @@ describe('CalorieService - source 字段', () => {
       title: '午餐',
       entryDate: '2026-04-01T12:00:00Z',
       source: EntrySource.HEALTHKIT,
+      externalId: 'hk-uuid-001',
     });
 
     expect(mockModel.findOneAndUpdate).toHaveBeenCalledWith(
-      {
-        userId: 'userId',
-        entryDate: new Date('2026-04-01T12:00:00Z'),
-        type: CalorieType.INTAKE,
-      },
+      { userId: 'userId', externalId: 'hk-uuid-001' },
       { $set: expect.objectContaining({ source: EntrySource.HEALTHKIT }) },
       { new: true, upsert: true, includeResultMetadata: true },
     );
@@ -193,7 +190,7 @@ describe('CalorieService - source 字段', () => {
   });
 });
 
-describe('CalorieService - upsert 去重', () => {
+describe('CalorieService - externalId 去重', () => {
   let service: CalorieService;
   let mockModel: any;
 
@@ -228,9 +225,9 @@ describe('CalorieService - upsert 去重', () => {
     service = module.get<CalorieService>(CalorieService);
   });
 
-  it('首次创建应返回 isNew=true', async () => {
+  it('有 externalId 且首次创建应返回 isNew=true', async () => {
     mockModel.findOneAndUpdate.mockResolvedValue({
-      value: { _id: 'new-id', calories: 500 },
+      value: { _id: 'new-id', externalId: 'hk-001' },
       lastErrorObject: { upserted: 'new-id' },
     });
 
@@ -239,13 +236,18 @@ describe('CalorieService - upsert 去重', () => {
       calories: 500,
       title: '午餐',
       entryDate: '2026-04-01T12:00:00Z',
+      externalId: 'hk-001',
     });
 
     expect(result.isNew).toBe(true);
-    expect(result.data).toEqual({ _id: 'new-id', calories: 500 });
+    expect(mockModel.findOneAndUpdate).toHaveBeenCalledWith(
+      { userId: 'userId', externalId: 'hk-001' },
+      expect.any(Object),
+      { new: true, upsert: true, includeResultMetadata: true },
+    );
   });
 
-  it('重复条目应返回 isNew=false', async () => {
+  it('有 externalId 且重复应返回 isNew=false', async () => {
     mockModel.findOneAndUpdate.mockResolvedValue({
       value: { _id: 'existing-id', calories: 600 },
       lastErrorObject: { updatedExisting: true },
@@ -256,33 +258,26 @@ describe('CalorieService - upsert 去重', () => {
       calories: 600,
       title: '午餐（修正）',
       entryDate: '2026-04-01T12:00:00Z',
+      externalId: 'hk-001',
     });
 
     expect(result.isNew).toBe(false);
-    expect(result.data).toEqual({ _id: 'existing-id', calories: 600 });
   });
 
-  it('应以 userId + entryDate + type 为匹配条件', async () => {
-    mockModel.findOneAndUpdate.mockResolvedValue({
-      value: {},
-      lastErrorObject: { upserted: 'id' },
+  it('无 externalId 应走普通创建并返回 isNew=true', async () => {
+    const mockEntry = { _id: 'new-id', calories: 500 };
+    mockModel.create.mockResolvedValue(mockEntry);
+
+    const result = await service.create('userId', {
+      type: CalorieType.INTAKE,
+      calories: 500,
+      title: '午餐',
+      entryDate: '2026-04-01T12:00:00Z',
     });
 
-    await service.create('user123', {
-      type: CalorieType.BURN,
-      calories: 300,
-      title: '跑步',
-      entryDate: '2026-04-01T18:00:00Z',
-    });
-
-    expect(mockModel.findOneAndUpdate).toHaveBeenCalledWith(
-      {
-        userId: 'user123',
-        entryDate: new Date('2026-04-01T18:00:00Z'),
-        type: CalorieType.BURN,
-      },
-      expect.any(Object),
-      { new: true, upsert: true, includeResultMetadata: true },
-    );
+    expect(result.isNew).toBe(true);
+    expect(result.data).toEqual(mockEntry);
+    expect(mockModel.create).toHaveBeenCalled();
+    expect(mockModel.findOneAndUpdate).not.toHaveBeenCalled();
   });
 });

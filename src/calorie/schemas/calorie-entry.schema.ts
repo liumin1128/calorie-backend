@@ -38,11 +38,14 @@ export class CalorieEntry {
 
   @Prop({ enum: EntrySource, default: EntrySource.MANUAL })
   source: EntrySource;
+
+  @Prop({ trim: true })
+  externalId: string;
 }
 
 export const CalorieEntrySchema = SchemaFactory.createForClass(CalorieEntry);
 
 CalorieEntrySchema.index(
-  { userId: 1, entryDate: 1, type: 1 },
-  { unique: true },
+  { userId: 1, externalId: 1 },
+  { unique: true, sparse: true },
 );

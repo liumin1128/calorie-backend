@@ -25,7 +25,7 @@ export class CalorieController {
   constructor(private readonly calorieService: CalorieService) {}
 
   /**
-   * @description 创建或更新卡路里条目（基于 userId + entryDate + type 去重）
+   * @description 创建或更新卡路里条目（有 externalId 时基于 userId + externalId 去重）
    * @param req JWT 请求对象
    * @param dto 创建参数
    * @param res Express Response

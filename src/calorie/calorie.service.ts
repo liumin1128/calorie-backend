@@ -19,24 +19,26 @@ export class CalorieService {
   ) {}
 
   /**
-   * @description 创建或更新卡路里条目（基于 userId + entryDate + type 去重）
+   * @description 创建或更新卡路里条目（有 externalId 时基于 userId + externalId 去重）
    * @param userId 当前用户 ID
    * @param dto 创建参数
    * @returns { data: 条目数据, isNew: 是否为新建 }
    */
   async create(userId: string, dto: CreateCalorieEntryDto) {
-    const { type, entryDate, ...updateFields } = dto;
-    const result = await this.calorieModel.findOneAndUpdate(
-      { userId, entryDate: new Date(entryDate), type },
-      {
-        $set: { ...updateFields, userId, entryDate: new Date(entryDate), type },
-      },
-      { new: true, upsert: true, includeResultMetadata: true },
-    );
-    return {
-      data: result.value,
-      isNew: !!result.lastErrorObject?.upserted,
-    };
+    if (dto.externalId) {
+      const result = await this.calorieModel.findOneAndUpdate(
+        { userId, externalId: dto.externalId },
+        { $set: { ...dto, userId } },
+        { new: true, upsert: true, includeResultMetadata: true },
+      );
+      return {
+        data: result.value,
+        isNew: !!result.lastErrorObject?.upserted,
+      };
+    }
+
+    const data = await this.calorieModel.create({ ...dto, userId });
+    return { data, isNew: true };
   }
 
   /**
