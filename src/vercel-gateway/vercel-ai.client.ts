@@ -1,4 +1,4 @@
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
@@ -27,6 +27,7 @@ export interface ChatWithModelOptions {
 
 @Injectable()
 export class VercelAiClient {
+  private readonly logger = new Logger(VercelAiClient.name);
   private readonly token: string;
   private readonly baseUrl: string;
   readonly model: string;
@@ -77,6 +78,7 @@ export class VercelAiClient {
       const status =
         (error as { response?: { status?: number } })?.response?.status ??
         HttpStatus.BAD_GATEWAY;
+      this.logger.error(`AI gateway request failed: ${method} ${path}`, (error as Error).stack);
       throw new HttpException('AI 网关请求失败', status);
     }
   }
