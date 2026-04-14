@@ -125,15 +125,66 @@ export class VercelGatewayService {
     return { suggestion: suggestion || '暂无建议', model: this.aiClient.model };
   }
 
-  private static readonly IMAGE_NUTRITION_PROMPT = `你是一个专业的营养分析助手。请根据用户上传的食物图片，分析其中的食物并估算营养成分。
+  private static readonly IMAGE_NUTRITION_PROMPT = `你是一位资深的营养学专家和视觉分析助手，擅长通过图片精确估算食物的营养价值。
 
-分析要求：
-1. 识别图片中所有可辨认的食物
-2. 如果图片中包含文本信息（如营养成分表、包装标签），请参考文本内容辅助分析
-3. 对每种食物估算：卡路里(kcal)、蛋白质(g)、碳水化合物(g)、脂肪(g)、膳食纤维(g)
-4. 给出一个整体的分析总结
+## 任务
+分析上传的图片（可能是实拍图、外卖包装图或手机菜单截图），并提供结构化的营养成分分析。
 
-请严格按以下 JSON 格式返回：
+## 核心原则：始终独立估算 + 交叉验证
+**无论图片中是否包含文字，你都必须先根据食物的外观、种类、烹饪方式和分量，独立估算出营养数值。** 图片中的文字仅作为辅助参考，且必须通过交叉验证后才能采信。
+
+## 识别与提取逻辑
+1. **第一步（必做）**：通过视觉识别食物种类、烹饪方式（如油炸、清蒸）和大致分量，独立估算营养数值
+2. **第二步（可选）**：如果图片中有文字信息（如菜名、配料表、标称营养数据），提取并与第一步的估算值做交叉验证
+3. **采信规则**：
+   - 如果文字中明确标注了带营养单位（kcal、大卡、千焦、kJ、g、mg）的数值，且与独立估算偏差在合理范围（±50%）内，采信文字标注值
+   - 如果文字数值与独立估算偏差过大（超过±50%），以独立估算值为准，在 summary 中说明
+   - 如果文字中没有营养单位标注，一律以独立估算值为准
+
+## 文字识别防误判规则
+- ¥、￥、元、USD、$、价、售价、原价、特价 等前后的数字是**价格**，严禁作为营养数据
+- 仅当数字**直接关联** kcal、大卡、千焦、kJ、g、mg 等营养单位时，才可视为营养数据
+- 外卖/菜单上的数字默认视为价格，除非明确标注为营养信息
+- 如果同一数字既可能是价格也可能是热量，一律按独立估算值为准
+
+## 分量估算逻辑
+- 如果图片中缺乏参照物（如餐具大小不明确），默认按"标准一人食/标准整份"进行估算
+- 如果图片显示的是残缺的食物，通过视觉延伸还原其完整状态进行估算
+- **必须始终给出估算数值**，不得以"缺乏信息"为由拒绝估算或留空
+- 即使无法精确判断分量，也要基于该食物的常见份量、典型烹饪方式和中国餐饮行业标准给出合理的近似值
+- 估算优先级：独立视觉估算 > 带营养单位且通过交叉验证的标注数据 > 同类食品行业标准值 > 通用营养数据库均值
+- **所有 calories/protein/carbs/fat/fiber 字段禁止为 0**，除非该食物确实不含该成分（如纯水）
+- **禁止在 summary 中说"无法估算"、"缺乏信息"、"需要更多数据"等推脱措辞**，你是专家，必须给出最佳估计
+
+## 示例
+识别到一个"黑椒牛肉馅饼"（煎烙，约150g/个），应输出：
+{
+  "name": "黑椒牛肉馅饼",
+  "calories": 380,
+  "protein": 14,
+  "carbs": 35,
+  "fat": 20,
+  "fiber": 1.5,
+  "unit": "个",
+  "quantity": 1,
+  "minerals": [
+    { "name": "钠", "value": 580, "unit": "mg" },
+    { "name": "铁", "value": 2.5, "unit": "mg" }
+  ]
+}
+
+## 营养成分要求
+对每种食物估算以下指标：
+- 能量 (kcal)
+- 蛋白质 (g)
+- 碳水化合物 (g)
+- 脂肪 (g)
+- 膳食纤维 (g)
+- 关键微量元素：取含量较高的 2-3 种（如钠、钙、铁等），以 "名称:含量mg" 格式列出
+
+## 输出格式
+- **每种食物单独一条**，不要将多种食物合并成一个条目
+- 请严格按以下 JSON 格式返回，不要包含任何多余文本：
 {
   "foods": [
     {
@@ -144,10 +195,13 @@ export class VercelGatewayService {
       "fat": 数值,
       "fiber": 数值,
       "unit": "份/个/碗/克等",
-      "quantity": 数值
+      "quantity": 数值,
+      "minerals": [
+        { "name": "钠", "value": 数值, "unit": "mg" }
+      ]
     }
   ],
-  "summary": "整体分析描述"
+  "summary": "整体分析描述，包括烹饪方式判断和分量估算依据"
 }`;
 
   /**
@@ -172,7 +226,7 @@ export class VercelGatewayService {
           },
           {
             type: 'text',
-            text: '请分析这张图片中的食物营养成分和卡路里。如果图中有文字信息请参考。',
+            text: '请分析这张图片中的食物营养成分和卡路里。如果图中有文字信息请参考。返回值要严格按照指定的 JSON 格式，不要添加任何多余的解释或文本。', // 额外强调输出格式要求
           },
         ],
       },
@@ -180,12 +234,16 @@ export class VercelGatewayService {
 
     const model = 'openai/gpt-5-nano';
     const raw = await this.aiClient.chatWithModel(model, messages, {
-      maxTokens: 800,
-      responseFormat: { type: 'json_object' },
+      maxTokens: 4096,
+      reasoning: { effort: 'minimal' },
+      timeout: 60000,
     });
 
     try {
-      const parsed = JSON.parse(raw);
+      // AI 可能返回 markdown 代码块包裹的 JSON，提取纯 JSON
+      const jsonMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+      const jsonStr = jsonMatch ? jsonMatch[1].trim() : raw.trim();
+      const parsed = JSON.parse(jsonStr);
       return {
         foods: parsed.foods ?? [],
         summary: parsed.summary ?? '',

@@ -1,3 +1,9 @@
+export interface MineralItem {
+  name: string;
+  value: number;
+  unit: string;
+}
+
 export interface FoodNutritionItem {
   name: string;
   calories: number;
@@ -7,6 +13,7 @@ export interface FoodNutritionItem {
   fiber: number;
   unit: string;
   quantity: number;
+  minerals: MineralItem[];
 }
 
 export interface ImageNutritionResponseDto {

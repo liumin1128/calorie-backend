@@ -23,6 +23,8 @@ export interface ChatMessage {
 export interface ChatWithModelOptions {
   maxTokens?: number;
   responseFormat?: { type: string };
+  reasoning?: { effort: 'none' | 'minimal' | 'low' | 'medium' | 'high' };
+  timeout?: number;
 }
 
 @Injectable()
@@ -59,6 +61,7 @@ export class VercelAiClient {
     method: string,
     path: string,
     body?: unknown,
+    timeout?: number,
   ): Promise<T> {
     try {
       const response = await firstValueFrom(
@@ -70,19 +73,19 @@ export class VercelAiClient {
             'Content-Type': 'application/json',
           },
           data: body,
-          timeout: 30000,
+          timeout: timeout || 30000,
         }),
       );
       return response.data;
     } catch (error: unknown) {
-      const status =
-        (error as { response?: { status?: number } })?.response?.status ??
-        HttpStatus.BAD_GATEWAY;
+      const resp = (error as { response?: { status?: number; data?: unknown } })
+        ?.response;
+      const status = resp?.status ?? HttpStatus.BAD_GATEWAY;
       this.logger.error(
-        `AI gateway request failed: ${method} ${path}`,
-        (error as Error).stack,
+        `AI gateway request failed: ${method} ${path} [${status}]`,
+        resp?.data ? JSON.stringify(resp.data) : (error as Error).stack,
       );
-      throw new HttpException('AI 网关请求失败', status);
+      throw new HttpException('AI 网关请求失败', HttpStatus.BAD_GATEWAY);
     }
   }
 
@@ -116,9 +119,16 @@ export class VercelAiClient {
     if (options?.responseFormat) {
       body.response_format = options.responseFormat;
     }
+    if (options?.reasoning) {
+      body.reasoning = options.reasoning;
+    }
     const result = await this.request<{
       choices: { message: { content: string } }[];
-    }>('POST', '/v1/chat/completions', body);
-    return result?.choices?.[0]?.message?.content ?? '';
+    }>('POST', '/v1/chat/completions', body, options?.timeout);
+    const content = result?.choices?.[0]?.message?.content ?? '';
+    if (!content) {
+      this.logger.warn('AI returned empty content', JSON.stringify(result));
+    }
+    return content;
   }
 }
