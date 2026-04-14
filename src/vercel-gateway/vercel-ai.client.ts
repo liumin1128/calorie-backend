@@ -3,9 +3,26 @@ import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
 
+export interface TextContentPart {
+  type: 'text';
+  text: string;
+}
+
+export interface ImageUrlContentPart {
+  type: 'image_url';
+  image_url: { url: string };
+}
+
+export type ContentPart = TextContentPart | ImageUrlContentPart;
+
 export interface ChatMessage {
   role: string;
-  content: string;
+  content: string | ContentPart[];
+}
+
+export interface ChatWithModelOptions {
+  maxTokens?: number;
+  responseFormat?: { type: string };
 }
 
 @Injectable()
@@ -65,19 +82,38 @@ export class VercelAiClient {
   }
 
   /**
-   * 发起 chat 对话请求
+   * 发起 chat 对话请求（使用默认模型）
    * @param messages 消息列表（OpenAI Chat Completions 格式）
    * @param maxTokens 最大 token 数，默认 800
    * @returns AI 回复文本
    */
   async chat(messages: ChatMessage[], maxTokens = 800): Promise<string> {
+    return this.chatWithModel(this.model, messages, { maxTokens });
+  }
+
+  /**
+   * 发起 chat 对话请求，支持指定模型和高级选项
+   * @param model 模型名称
+   * @param messages 消息列表（支持多模态 content parts）
+   * @param options 可选参数：maxTokens、responseFormat
+   * @returns AI 回复文本
+   */
+  async chatWithModel(
+    model: string,
+    messages: ChatMessage[],
+    options?: ChatWithModelOptions,
+  ): Promise<string> {
+    const body: Record<string, unknown> = {
+      model,
+      messages,
+      max_tokens: options?.maxTokens ?? 800,
+    };
+    if (options?.responseFormat) {
+      body.response_format = options.responseFormat;
+    }
     const result = await this.request<{
       choices: { message: { content: string } }[];
-    }>('POST', '/v1/chat/completions', {
-      model: this.model,
-      messages,
-      max_tokens: maxTokens,
-    });
+    }>('POST', '/v1/chat/completions', body);
     return result?.choices?.[0]?.message?.content ?? '';
   }
 }

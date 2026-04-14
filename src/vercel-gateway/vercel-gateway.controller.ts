@@ -4,11 +4,24 @@ import {
   Get,
   Post,
   Request,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
+  BadRequestException,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { SuggestDto } from './dto/suggest.dto';
 import { VercelGatewayService } from './vercel-gateway.service';
+
+const ALLOWED_MIME_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+];
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 @Controller('gateway')
 export class VercelGatewayController {
@@ -33,5 +46,37 @@ export class VercelGatewayController {
   @Post('ai/suggest')
   getSuggestion(@Request() req, @Body() dto: SuggestDto) {
     return this.vercelGatewayService.getSuggestion(req.user.sub, dto.question);
+  }
+
+  /**
+   * 分析用户上传的食物图片，返回结构化营养成分和卡路里数据
+   * @param file 用户上传的图片（multipart/form-data, field: image）
+   * @returns { foods: FoodNutritionItem[], summary: string, model: string }
+   * @throws 400 未上传文件或格式/大小不合法
+   * @throws 502 AI 返回内容解析失败
+   */
+  @UseGuards(JwtAuthGuard)
+  @Post('ai/image-nutrition')
+  @UseInterceptors(
+    FileInterceptor('image', {
+      limits: { fileSize: MAX_FILE_SIZE },
+      fileFilter: (_req, file, cb) => {
+        if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+          return cb(
+            new BadRequestException(
+              '不支持的文件格式，仅允许 JPEG、PNG、WebP、GIF',
+            ),
+            false,
+          );
+        }
+        cb(null, true);
+      },
+    }),
+  )
+  analyzeImageNutrition(@UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('请上传食物图片');
+    }
+    return this.vercelGatewayService.analyzeImageNutrition(file);
   }
 }

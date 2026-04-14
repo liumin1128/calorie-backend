@@ -1,8 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CalorieService } from '../calorie/calorie.service';
 import { UserService } from '../user/user.service';
-import { VercelAiClient } from './vercel-ai.client';
+import { VercelAiClient, ChatMessage } from './vercel-ai.client';
+import { ImageNutritionResponseDto } from './dto/image-nutrition.dto';
+import 'multer';
 
 const SYSTEM_PROMPT = `基于用户提供的身体数据、目标和近期饮食运动记录，直接给出个性化健康建议。
 
@@ -121,5 +123,76 @@ export class VercelGatewayService {
     );
 
     return { suggestion: suggestion || '暂无建议', model: this.aiClient.model };
+  }
+
+  private static readonly IMAGE_NUTRITION_PROMPT = `你是一个专业的营养分析助手。请根据用户上传的食物图片，分析其中的食物并估算营养成分。
+
+分析要求：
+1. 识别图片中所有可辨认的食物
+2. 如果图片中包含文本信息（如营养成分表、包装标签），请参考文本内容辅助分析
+3. 对每种食物估算：卡路里(kcal)、蛋白质(g)、碳水化合物(g)、脂肪(g)、膳食纤维(g)
+4. 给出一个整体的分析总结
+
+请严格按以下 JSON 格式返回：
+{
+  "foods": [
+    {
+      "name": "食物名称",
+      "calories": 数值,
+      "protein": 数值,
+      "carbs": 数值,
+      "fat": 数值,
+      "fiber": 数值,
+      "unit": "份/个/碗/克等",
+      "quantity": 数值
+    }
+  ],
+  "summary": "整体分析描述"
+}`;
+
+  /**
+   * 分析食物图片的营养成分
+   * @param file 用户上传的图片文件
+   * @returns 结构化营养分析结果
+   */
+  async analyzeImageNutrition(
+    file: Express.Multer.File,
+  ): Promise<ImageNutritionResponseDto> {
+    const base64 = file.buffer.toString('base64');
+    const dataUrl = `data:${file.mimetype};base64,${base64}`;
+
+    const messages: ChatMessage[] = [
+      { role: 'system', content: VercelGatewayService.IMAGE_NUTRITION_PROMPT },
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'image_url',
+            image_url: { url: dataUrl },
+          },
+          {
+            type: 'text',
+            text: '请分析这张图片中的食物营养成分和卡路里。如果图中有文字信息请参考。',
+          },
+        ],
+      },
+    ];
+
+    const model = 'openai/gpt-5-nano';
+    const raw = await this.aiClient.chatWithModel(model, messages, {
+      maxTokens: 800,
+      responseFormat: { type: 'json_object' },
+    });
+
+    try {
+      const parsed = JSON.parse(raw);
+      return {
+        foods: parsed.foods ?? [],
+        summary: parsed.summary ?? '',
+        model,
+      };
+    } catch {
+      throw new HttpException('AI 返回内容解析失败', HttpStatus.BAD_GATEWAY);
+    }
   }
 }

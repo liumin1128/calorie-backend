@@ -1,6 +1,4 @@
-# ai-client Spec
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: VercelAiClient 提供基础 chat 调用能力
 `VercelAiClient` SHALL 封装对 Vercel AI Gateway 的 HTTP 通信，提供 `chat(messages, maxTokens?)` 方法，返回 AI 回复文本（string）。客户端 SHALL 从环境变量读取 `VERCEL_AI_TOKEN`、`VERCEL_AI_GATEWAY_URL`、`VERCEL_AI_MODEL`，并在初始化时校验 Token 是否存在。
@@ -28,17 +26,3 @@
 #### Scenario: chatWithModel 使用 responseFormat
 - **WHEN** 调用者传入 `responseFormat: { type: "json_object" }`
 - **THEN** 请求体 SHALL 包含 `response_format` 字段，AI 返回 JSON 格式内容
-
-### Requirement: VercelAiClient 可被其他模块复用
-`VercelGatewayModule` SHALL 在 `exports` 数组中导出 `VercelAiClient`，使其他 NestJS 模块通过 `imports: [VercelGatewayModule]` 注入使用。
-
-#### Scenario: 其他模块注入 VercelAiClient
-- **WHEN** 任意模块在 `imports` 中声明 `VercelGatewayModule`
-- **THEN** 该模块的 Provider SHALL 能够通过构造函数注入 `VercelAiClient`
-
-### Requirement: VercelGatewayService 只保留业务逻辑
-`VercelGatewayService` SHALL 不再包含 HTTP 通信代码，仅负责构造 prompt、调用 `VercelAiClient.chat()`、格式化并返回结果。
-
-#### Scenario: getSuggestion 通过 client 调用 AI
-- **WHEN** 用户调用 `POST /gateway/ai/suggest`
-- **THEN** `VercelGatewayService` SHALL 组装 messages 数组后调用 `VercelAiClient.chat()`，返回格式不变（`{ suggestion, model }`）
