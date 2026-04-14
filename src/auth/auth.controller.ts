@@ -6,6 +6,7 @@ import {
   UseGuards,
   Request,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -25,6 +26,7 @@ export class AuthController {
    * @returns { access_token, user: { id, email, nickname, gender, birthday, signature, latestHeight, latestWeight } }
    * @throws ConflictException 该邮箱已注册
    */
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
   @Post('register')
   register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
@@ -39,6 +41,7 @@ export class AuthController {
    * @returns { access_token, user: { id, email, nickname, gender, birthday, signature, latestHeight, latestWeight } }
    * @throws UnauthorizedException 邮箱或密码错误
    */
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
   @Post('login')
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
