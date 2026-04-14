@@ -78,7 +78,10 @@ export class VercelAiClient {
       const status =
         (error as { response?: { status?: number } })?.response?.status ??
         HttpStatus.BAD_GATEWAY;
-      this.logger.error(`AI gateway request failed: ${method} ${path}`, (error as Error).stack);
+      this.logger.error(
+        `AI gateway request failed: ${method} ${path}`,
+        (error as Error).stack,
+      );
       throw new HttpException('AI 网关请求失败', status);
     }
   }
