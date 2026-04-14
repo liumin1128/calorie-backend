@@ -4,7 +4,7 @@ import { CalorieService } from '../calorie/calorie.service';
 import { UserService } from '../user/user.service';
 import { VercelAiClient } from './vercel-ai.client';
 
-const SYSTEM_PROMPT = `基于用户提供的身体数据、目标和近7天饮食运动记录，直接给出个性化健康建议。
+const SYSTEM_PROMPT = `基于用户提供的身体数据、目标和近期饮食运动记录，直接给出个性化健康建议。
 
 输出要求：
 1. 不要介绍自己是谁，不要寒暄，直接进入建议。
@@ -13,6 +13,7 @@ const SYSTEM_PROMPT = `基于用户提供的身体数据、目标和近7天饮�
 4. 建议按这四个部分组织：当前判断、根据目标指定计划、接下来怎么做、需要注意什么。
 5. 尽量给出具体动作、食物、运动和习惯建议，少说空话。
 6. 如果用户数据不足，直接指出缺什么，并给出在信息有限时也能立刻执行的建议。
+7. 仅根据用户实际有记录的天数进行分析和判断，没有数据的日期不代表用户没有进食或运动，不要对无数据日期做任何假设。
 
 安全要求：
 1. 不提供极端节食、过度运动或有明显风险的方案。
@@ -66,36 +67,50 @@ export class VercelGatewayService {
       return `- ${mm}/${dd} ${hh}:${min}  ${entry.title}（${entry.calories} kcal）${desc}`;
     };
 
-    const intakeLines = summary.intakeEntries.length
-      ? summary.intakeEntries.map(formatEntry).join('\n')
-      : '- 暂无饮食记录';
+    const days = summary.daysWithData;
 
-    const burnLines = summary.burnEntries.length
-      ? summary.burnEntries.map(formatEntry).join('\n')
-      : '- 暂无运动记录';
+    const parts: string[] = [
+      `基础信息：`,
+      `身高：${profile?.latestHeight?.value ?? '暂无记录'} cm`,
+      `当前体重：${profile?.latestWeight?.value ?? '暂无记录'} kg`,
+      `目标体重：${profile?.targetWeight ?? '未设置'} kg`,
+      `健康状态简述：${profile?.healthConditions?.join(', ') ?? '暂无填写'}`,
+    ];
 
-    const intakeAvg = Math.round(summary.intakeTotal / 7);
-    const burnAvg = Math.round(summary.burnTotal / 7);
-    const netAvg = intakeAvg - burnAvg;
+    if (summary.intakeEntries.length) {
+      parts.push(
+        '',
+        `近7日饮食记录（摄入，共 ${days} 天有数据）：`,
+        summary.intakeEntries.map(formatEntry).join('\n'),
+      );
+    }
 
-    const userMessage = `基础信息：
-身高：${profile?.latestHeight?.value ?? '暂无记录'} cm
-当前体重：${profile?.latestWeight?.value ?? '暂无记录'} kg
-目标体重：${profile?.targetWeight ?? '未设置'} kg
-健康状态简述：${profile?.healthConditions?.join(', ') ?? '暂无填写'}
+    if (summary.burnEntries.length) {
+      parts.push(
+        '',
+        `近7日运动记录（消耗，共 ${days} 天有数据）：`,
+        summary.burnEntries.map(formatEntry).join('\n'),
+      );
+    }
 
-近7日饮食记录（摄入）：
-${intakeLines}
+    if (days > 0) {
+      const intakeAvg = Math.round(summary.intakeTotal / days);
+      const burnAvg = Math.round(summary.burnTotal / days);
+      const netAvg = intakeAvg - burnAvg;
+      parts.push(
+        '',
+        `统计汇总（仅基于有记录的 ${days} 天）：`,
+        `- 摄入：共 ${summary.intakeTotal} kcal，日均 ${intakeAvg} kcal，${summary.intakeCount} 条记录`,
+        `- 消耗：共 ${summary.burnTotal} kcal，日均 ${burnAvg} kcal，${summary.burnCount} 条记录`,
+        `- 日均净热量差（摄入-消耗）：${netAvg} kcal`,
+      );
+    } else {
+      parts.push('', '近7日暂无饮食或运动记录。');
+    }
 
-近7日运动记录（消耗）：
-${burnLines}
+    parts.push('', `我的问题：${question}`);
 
-统计汇总：
-- 摄入：共 ${summary.intakeTotal} kcal，日均 ${intakeAvg} kcal，${summary.intakeCount} 条记录
-- 消耗：共 ${summary.burnTotal} kcal，日均 ${burnAvg} kcal，${summary.burnCount} 条记录
-- 日均净热量差（摄入-消耗）：${netAvg} kcal
-
-我的问题：${question}`;
+    const userMessage = parts.join('\n');
 
     const suggestion = await this.aiClient.chat(
       [

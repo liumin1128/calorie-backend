@@ -210,8 +210,13 @@ export class CalorieService {
     }[] = [];
     let intakeTotal = 0;
     let burnTotal = 0;
+    const daysWithDataSet = new Set<string>();
 
     for (const entry of entries) {
+      const d = new Date(entry.entryDate);
+      daysWithDataSet.add(
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
+      );
       const item = {
         title: entry.title,
         calories: entry.calories,
@@ -232,6 +237,7 @@ export class CalorieService {
       intakeCount: intakeEntries.length,
       burnTotal,
       burnCount: burnEntries.length,
+      daysWithData: daysWithDataSet.size,
       intakeEntries,
       burnEntries,
     };
