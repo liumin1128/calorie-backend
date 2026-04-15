@@ -1,7 +1,24 @@
-export class MineralDto {
-  name: string;
-  value: number;
-  unit: string;
+export class NutritionDto {
+  protein: number | null;
+  fat: number | null;
+  carbohydrates: number | null;
+  fiber: number | null;
+}
+
+export class MineralsDto {
+  calcium?: number | null;
+  magnesium?: number | null;
+  potassium?: number | null;
+  sodium?: number | null;
+  phosphorus?: number | null;
+  iron?: number | null;
+  zinc?: number | null;
+  manganese?: number | null;
+  copper?: number | null;
+  selenium?: number | null;
+  iodine?: number | null;
+  chromium?: number | null;
+  fluoride?: number | null;
 }
 
 export class BarcodeFoodResponseDto {
@@ -10,10 +27,7 @@ export class BarcodeFoodResponseDto {
   brand: string | null;
   quantity: string | null;
   calories: number | null;
-  protein: number | null;
-  carbs: number | null;
-  fat: number | null;
-  fiber: number | null;
   water: number | null;
-  minerals: MineralDto[];
+  nutrition: NutritionDto;
+  minerals: MineralsDto;
 }

@@ -154,7 +154,7 @@ export class VercelGatewayService {
 - **必须始终给出估算数值**，不得以"缺乏信息"为由拒绝估算或留空
 - 即使无法精确判断分量，也要基于该食物的常见份量、典型烹饪方式和中国餐饮行业标准给出合理的近似值
 - 估算优先级：独立视觉估算 > 带营养单位且通过交叉验证的标注数据 > 同类食品行业标准值 > 通用营养数据库均值
-- **所有 calories/protein/carbs/fat/fiber/water 字段禁止为 0**，除非该食物确实不含该成分（如纯水的calories/protein/carbs/fat/fiber可为0，但water不应为0）
+- **所有 calories/water/nutrition/minerals 中的数值字段禁止为 0**，除非该食物确实不含该成分（如纯水的calories/nutrition各项可为0，但water不应为0）
 - **禁止在 summary 中说"无法估算"、"缺乏信息"、"需要更多数据"等推脱措辞**，你是专家，必须给出最佳估计
 
 ## 示例
@@ -162,28 +162,29 @@ export class VercelGatewayService {
 {
   "name": "黑椒牛肉馅饼",
   "calories": 380,
-  "protein": 14,
-  "carbs": 35,
-  "fat": 20,
-  "fiber": 1.5,
   "water": 45,
+  "nutrition": {
+    "protein": 14,
+    "fat": 20,
+    "carbohydrates": 35,
+    "fiber": 1.5
+  },
+  "minerals": {
+    "sodium": 580,
+    "iron": 2.5,
+    "calcium": 25
+  },
   "unit": "个",
-  "quantity": 1,
-  "minerals": [
-    { "name": "钠", "value": 580, "unit": "mg" },
-    { "name": "铁", "value": 2.5, "unit": "mg" }
-  ]
+  "quantity": 1
 }
 
 ## 营养成分要求
 对每种食物估算以下指标：
 - 能量 (kcal)
-- 蛋白质 (g)
-- 碳水化合物 (g)
-- 脂肪 (g)
-- 膳食纤维 (g)
 - 水分 (g)
-- 关键微量元素：取含量较高的 2-3 种（如钠、钙、铁等），以 "名称:含量mg" 格式列出
+- 营养成分 nutrition：蛋白质 protein (g)、脂肪 fat (g)、碳水化合物 carbohydrates (g)、膳食纤维 fiber (g)
+- 矿物质 minerals：钙 calcium (mg)、镁 magnesium (mg)、钾 potassium (mg)、钠 sodium (mg)、磷 phosphorus (mg)、铁 iron (mg)、锌 zinc (mg)、锰 manganese (mg)、铜 copper (mg)、硒 selenium (μg)、碘 iodine (μg)、铬 chromium (μg)、氟 fluoride (mg)
+- minerals 中只需列出含量大于 0 的字段
 
 ## 输出格式
 - **图片中有几个食物主体，就必须输出几条**，不得遗漏、合并或将任何食物降级为 summary 中的附注
@@ -194,16 +195,19 @@ export class VercelGatewayService {
     {
       "name": "食物名称",
       "calories": 数值,
-      "protein": 数值,
-      "carbs": 数值,
-      "fat": 数值,
-      "fiber": 数值,
       "water": 数值,
+      "nutrition": {
+        "protein": 数值,
+        "fat": 数值,
+        "carbohydrates": 数值,
+        "fiber": 数值
+      },
+      "minerals": {
+        "sodium": 数值,
+        "calcium": 数值
+      },
       "unit": "份/个/碗/克等",
-      "quantity": 数值,
-      "minerals": [
-        { "name": "钠", "value": 数值, "unit": "mg" }
-      ]
+      "quantity": 数值
     }
   ],
   "summary": "整体分析描述，包括烹饪方式判断和分量估算依据"

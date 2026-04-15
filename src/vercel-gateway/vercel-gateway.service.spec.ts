@@ -38,10 +38,16 @@ describe('VercelGatewayService - analyzeImageNutrition', () => {
         {
           name: '米饭',
           calories: 200,
-          protein: 4,
-          carbs: 45,
-          fat: 0.5,
-          fiber: 0.3,
+          water: 120,
+          nutrition: {
+            protein: 4,
+            fat: 0.5,
+            carbohydrates: 45,
+            fiber: 0.3,
+          },
+          minerals: {
+            sodium: 2,
+          },
           unit: '碗',
           quantity: 1,
         },
@@ -72,7 +78,8 @@ describe('VercelGatewayService - analyzeImageNutrition', () => {
         }),
       ]),
       expect.objectContaining({
-        responseFormat: { type: 'json_object' },
+        maxTokens: 4096,
+        reasoning: { effort: 'minimal' },
       }),
     );
 

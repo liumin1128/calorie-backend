@@ -46,17 +46,17 @@ describe('FoodService', () => {
       expect(result.brand).toBe('Nutella');
       expect(result.quantity).toBe('400 g');
       expect(result.calories).toBe(539);
-      expect(result.protein).toBe(6.3);
-      expect(result.carbs).toBe(57.5);
-      expect(result.fat).toBe(30.9);
-      expect(result.fiber).toBe(3.4);
+      expect(result.nutrition.protein).toBe(6.3);
+      expect(result.nutrition.carbohydrates).toBe(57.5);
+      expect(result.nutrition.fat).toBe(30.9);
+      expect(result.nutrition.fiber).toBe(3.4);
       // sodium 从 g 转换为 mg
       expect(result.minerals).toEqual(
-        expect.arrayContaining([
-          { name: '钠', value: 43, unit: 'mg' },
-          { name: '钙', value: 80, unit: 'mg' },
-          { name: '铁', value: 2.5, unit: 'mg' },
-        ]),
+        expect.objectContaining({
+          sodium: 43,
+          calcium: 80,
+          iron: 2.5,
+        }),
       );
     });
 
@@ -77,8 +77,8 @@ describe('FoodService', () => {
 
       expect(result.name).toBe('某食品');
       expect(result.calories).toBeNull();
-      expect(result.protein).toBeNull();
-      expect(result.minerals).toEqual([]);
+      expect(result.nutrition.protein).toBeNull();
+      expect(result.minerals).toEqual({});
     });
   });
 

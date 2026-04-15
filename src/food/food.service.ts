@@ -3,18 +3,28 @@ import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import {
   BarcodeFoodResponseDto,
-  MineralDto,
+  MineralsDto,
 } from './dto/barcode-food-response.dto';
 
-/** Open Food Facts nutriments 中需要提取的微量元素映射 */
-const MINERAL_KEYS: { key: string; name: string; unit: string }[] = [
-  { key: 'sodium_100g', name: '钠', unit: 'mg' },
-  { key: 'calcium_100g', name: '钙', unit: 'mg' },
-  { key: 'iron_100g', name: '铁', unit: 'mg' },
-  { key: 'potassium_100g', name: '钾', unit: 'mg' },
-  { key: 'magnesium_100g', name: '镁', unit: 'mg' },
-  { key: 'zinc_100g', name: '锌', unit: 'mg' },
-  { key: 'phosphorus_100g', name: '磷', unit: 'mg' },
+/** Open Food Facts nutriments 中需要提取的矿物质字段映射 */
+const MINERAL_KEYS: {
+  key: string;
+  field: keyof MineralsDto;
+  isSodium?: boolean;
+}[] = [
+  { key: 'sodium_100g', field: 'sodium', isSodium: true },
+  { key: 'calcium_100g', field: 'calcium' },
+  { key: 'iron_100g', field: 'iron' },
+  { key: 'potassium_100g', field: 'potassium' },
+  { key: 'magnesium_100g', field: 'magnesium' },
+  { key: 'zinc_100g', field: 'zinc' },
+  { key: 'phosphorus_100g', field: 'phosphorus' },
+  { key: 'manganese_100g', field: 'manganese' },
+  { key: 'copper_100g', field: 'copper' },
+  { key: 'selenium_100g', field: 'selenium' },
+  { key: 'iodine_100g', field: 'iodine' },
+  { key: 'chromium_100g', field: 'chromium' },
+  { key: 'fluoride_100g', field: 'fluoride' },
 ];
 
 @Injectable()
@@ -76,25 +86,25 @@ export class FoodService {
       brand: (product.brands as string) || null,
       quantity: (product.quantity as string) || null,
       calories: nutriments['energy-kcal_100g'] ?? null,
-      protein: nutriments['proteins_100g'] ?? null,
-      carbs: nutriments['carbohydrates_100g'] ?? null,
-      fat: nutriments['fat_100g'] ?? null,
-      fiber: nutriments['fiber_100g'] ?? null,
       water: nutriments['water_100g'] ?? null,
+      nutrition: {
+        protein: nutriments['proteins_100g'] ?? null,
+        fat: nutriments['fat_100g'] ?? null,
+        carbohydrates: nutriments['carbohydrates_100g'] ?? null,
+        fiber: nutriments['fiber_100g'] ?? null,
+      },
       minerals: this.extractMinerals(nutriments),
     };
   }
 
-  /** 从 nutriments 中提取可用的微量元素 */
-  private extractMinerals(nutriments: Record<string, number>): MineralDto[] {
-    const minerals: MineralDto[] = [];
-    for (const { key, name, unit } of MINERAL_KEYS) {
+  /** 从 nutriments 中提取可用的矿物质 */
+  private extractMinerals(nutriments: Record<string, number>): MineralsDto {
+    const minerals: MineralsDto = {};
+    for (const { key, field, isSodium } of MINERAL_KEYS) {
       const value = nutriments[key];
       if (value != null && value > 0) {
         // sodium 在 OFF 中单位是 g，转换为 mg
-        const converted =
-          key === 'sodium_100g' ? Math.round(value * 1000) : value;
-        minerals.push({ name, value: converted, unit });
+        minerals[field] = isSodium ? Math.round(value * 1000) : value;
       }
     }
     return minerals;

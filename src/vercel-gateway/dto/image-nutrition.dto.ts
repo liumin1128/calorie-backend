@@ -1,20 +1,34 @@
-export interface MineralItem {
-  name: string;
-  value: number;
-  unit: string;
+export interface NutritionInfo {
+  protein: number;
+  fat: number;
+  carbohydrates: number;
+  fiber: number;
+}
+
+export interface MineralsInfo {
+  calcium?: number;
+  magnesium?: number;
+  potassium?: number;
+  sodium?: number;
+  phosphorus?: number;
+  iron?: number;
+  zinc?: number;
+  manganese?: number;
+  copper?: number;
+  selenium?: number;
+  iodine?: number;
+  chromium?: number;
+  fluoride?: number;
 }
 
 export interface FoodNutritionItem {
   name: string;
   calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  fiber: number;
   water: number;
+  nutrition: NutritionInfo;
+  minerals: MineralsInfo;
   unit: string;
   quantity: number;
-  minerals: MineralItem[];
 }
 
 export interface ImageNutritionResponseDto {
