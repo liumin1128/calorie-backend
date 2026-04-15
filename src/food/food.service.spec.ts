@@ -12,7 +12,7 @@ describe('FoodService', () => {
   });
 
   describe('lookupByBarcode - 成功查询', () => {
-    it('应返回结构化的食品营养数据', async () => {
+    it('应返回结构化的食品营养数据（含总量计算）', async () => {
       mockHttpService.get.mockReturnValue(
         of({
           data: {
@@ -22,12 +22,19 @@ describe('FoodService', () => {
               image_front_url: 'https://images.openfoodfacts.org/nutella.jpg',
               brands: 'Nutella',
               quantity: '400 g',
+              nutrition_data_per: '100g',
+              product_quantity: 400,
+              product_quantity_unit: 'g',
               nutriments: {
                 'energy-kcal_100g': 539,
+                'energy-kj_100g': 2255,
                 proteins_100g: 6.3,
                 carbohydrates_100g: 57.5,
                 fat_100g: 30.9,
+                'saturated-fat_100g': 10.6,
+                sugars_100g: 56.3,
                 fiber_100g: 3.4,
+                salt_100g: 0.107,
                 sodium_100g: 0.0428,
                 calcium_100g: 80,
                 iron_100g: 2.5,
@@ -45,11 +52,18 @@ describe('FoodService', () => {
       );
       expect(result.brand).toBe('Nutella');
       expect(result.quantity).toBe('400 g');
+      expect(result.nutritionDataPer).toBe('100g');
+      expect(result.productQuantity).toBe(400);
+      expect(result.productQuantityUnit).toBe('g');
       expect(result.calories).toBe(539);
+      expect(result.energyKj).toBe(2255);
       expect(result.nutrition.protein).toBe(6.3);
       expect(result.nutrition.carbohydrates).toBe(57.5);
       expect(result.nutrition.fat).toBe(30.9);
+      expect(result.nutrition.saturatedFat).toBe(10.6);
+      expect(result.nutrition.sugars).toBe(56.3);
       expect(result.nutrition.fiber).toBe(3.4);
+      expect(result.nutrition.salt).toBe(0.107);
       // sodium 从 g 转换为 mg
       expect(result.minerals).toEqual(
         expect.objectContaining({
@@ -58,6 +72,13 @@ describe('FoodService', () => {
           iron: 2.5,
         }),
       );
+      // 总量 = per100 × (400/100) = per100 × 4
+      expect(result.totalCalories).toBe(2156);
+      expect(result.totalNutrition).toBeTruthy();
+      expect(result.totalNutrition!.carbohydrates).toBe(230);
+      expect(result.totalNutrition!.fat).toBe(123.6);
+      expect(result.totalMinerals).toBeTruthy();
+      expect(result.totalMinerals!.sodium).toBe(172);
     });
 
     it('缺失营养字段应返回 null', async () => {
@@ -77,8 +98,61 @@ describe('FoodService', () => {
 
       expect(result.name).toBe('某食品');
       expect(result.calories).toBeNull();
+      expect(result.energyKj).toBeNull();
       expect(result.nutrition.protein).toBeNull();
+      expect(result.nutrition.saturatedFat).toBeNull();
+      expect(result.nutrition.sugars).toBeNull();
+      expect(result.nutrition.salt).toBeNull();
       expect(result.minerals).toEqual({});
+      expect(result.totalCalories).toBeNull();
+      expect(result.totalWater).toBeNull();
+      expect(result.totalNutrition).toBeNull();
+      expect(result.totalMinerals).toBeNull();
+    });
+
+    it('元气森林气泡水（per 100ml）应正确计算总量', async () => {
+      mockHttpService.get.mockReturnValue(
+        of({
+          data: {
+            status: 1,
+            product: {
+              product_name: '元气森林气泡水橙子味',
+              brands: '元气森林',
+              quantity: '480ml',
+              nutrition_data_per: '100ml',
+              product_quantity: 480,
+              product_quantity_unit: 'ml',
+              nutriments: {
+                'energy-kcal_100g': 0,
+                'energy-kj_100g': 0,
+                carbohydrates_100g: 2.5,
+                fat_100g: 0,
+                'saturated-fat_100g': 0,
+                sugars_100g: 0,
+                salt_100g: 0.0725,
+                sodium_100g: 0.029,
+              },
+            },
+          },
+        }),
+      );
+
+      const result = await service.lookupByBarcode('6937003704014');
+
+      expect(result.nutritionDataPer).toBe('100ml');
+      expect(result.productQuantity).toBe(480);
+      expect(result.productQuantityUnit).toBe('ml');
+      expect(result.nutrition.carbohydrates).toBe(2.5);
+      expect(result.nutrition.salt).toBe(0.0725);
+      // 总量 = per100 × 4.8
+      expect(result.totalCalories).toBe(0);
+      expect(result.totalNutrition!.carbohydrates).toBe(12);
+      expect(result.totalNutrition!.salt).toBe(0.35);
+      expect(result.totalMinerals!.sodium).toBe(139.2);
+      // 饮料水分估算：100 - (0+0+2.5+0+0.0725) = 97.43 per 100ml
+      expect(result.water).toBe(97.43);
+      // 总水分 = 97.43 × 4.8 = 467.66
+      expect(result.totalWater).toBe(467.66);
     });
   });
 

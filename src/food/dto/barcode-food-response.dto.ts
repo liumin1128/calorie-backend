@@ -3,10 +3,16 @@ export class NutritionDto {
   protein: number | null;
   /** 脂肪 (g) */
   fat: number | null;
+  /** 饱和脂肪 (g) */
+  saturatedFat: number | null;
   /** 碳水化合物 (g) */
   carbohydrates: number | null;
+  /** 糖 (g) */
+  sugars: number | null;
   /** 膳食纤维 (g) */
   fiber: number | null;
+  /** 盐 (g) */
+  salt: number | null;
 }
 
 export class MineralsDto {
@@ -43,10 +49,31 @@ export class BarcodeFoodResponseDto {
   imageUrl: string | null;
   brand: string | null;
   quantity: string | null;
-  /** 能量 (kcal) */
+
+  /** 营养数据基准，如 "100ml" / "100g" */
+  nutritionDataPer: string | null;
+  /** 产品总量数值，如 480 */
+  productQuantity: number | null;
+  /** 产品总量单位，如 "ml" */
+  productQuantityUnit: string | null;
+
+  /** 能量 (kcal / 每基准单位) */
   calories: number | null;
-  /** 水分 (g) */
+  /** 能量 (kJ / 每基准单位) */
+  energyKj: number | null;
+  /** 水分 (g/ml per 基准单位)，饮料缺失时自动估算 */
   water: number | null;
+  /** 每基准单位营养成分 */
   nutrition: NutritionDto;
+  /** 每基准单位矿物质 */
   minerals: MineralsDto;
+
+  /** 整份产品总热量 (kcal)，根据 productQuantity 计算 */
+  totalCalories: number | null;
+  /** 整份产品总水分 (ml/g) */
+  totalWater: number | null;
+  /** 整份产品总营养成分 */
+  totalNutrition: NutritionDto | null;
+  /** 整份产品总矿物质 */
+  totalMinerals: MineralsDto | null;
 }
