@@ -11,6 +11,8 @@ export enum CalorieType {
 export enum EntrySource {
   MANUAL = 'manual',
   HEALTHKIT = 'healthkit',
+  BARCODE = 'barcode',
+  AI = 'ai',
 }
 
 export enum MealType {
