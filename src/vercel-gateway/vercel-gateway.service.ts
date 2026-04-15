@@ -154,7 +154,7 @@ export class VercelGatewayService {
 - **必须始终给出估算数值**，不得以"缺乏信息"为由拒绝估算或留空
 - 即使无法精确判断分量，也要基于该食物的常见份量、典型烹饪方式和中国餐饮行业标准给出合理的近似值
 - 估算优先级：独立视觉估算 > 带营养单位且通过交叉验证的标注数据 > 同类食品行业标准值 > 通用营养数据库均值
-- **所有 calories/protein/carbs/fat/fiber 字段禁止为 0**，除非该食物确实不含该成分（如纯水）
+- **所有 calories/protein/carbs/fat/fiber/water 字段禁止为 0**，除非该食物确实不含该成分（如纯水的calories/protein/carbs/fat/fiber可为0，但water不应为0）
 - **禁止在 summary 中说"无法估算"、"缺乏信息"、"需要更多数据"等推脱措辞**，你是专家，必须给出最佳估计
 
 ## 示例
@@ -166,6 +166,7 @@ export class VercelGatewayService {
   "carbs": 35,
   "fat": 20,
   "fiber": 1.5,
+  "water": 45,
   "unit": "个",
   "quantity": 1,
   "minerals": [
@@ -181,6 +182,7 @@ export class VercelGatewayService {
 - 碳水化合物 (g)
 - 脂肪 (g)
 - 膳食纤维 (g)
+- 水分 (g)
 - 关键微量元素：取含量较高的 2-3 种（如钠、钙、铁等），以 "名称:含量mg" 格式列出
 
 ## 输出格式
@@ -196,6 +198,7 @@ export class VercelGatewayService {
       "carbs": 数值,
       "fat": 数值,
       "fiber": 数值,
+      "water": 数值,
       "unit": "份/个/碗/克等",
       "quantity": 数值,
       "minerals": [

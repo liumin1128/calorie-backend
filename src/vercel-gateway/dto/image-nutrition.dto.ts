@@ -11,6 +11,7 @@ export interface FoodNutritionItem {
   carbs: number;
   fat: number;
   fiber: number;
+  water: number;
   unit: string;
   quantity: number;
   minerals: MineralItem[];

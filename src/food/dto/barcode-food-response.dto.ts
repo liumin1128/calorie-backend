@@ -14,5 +14,6 @@ export class BarcodeFoodResponseDto {
   carbs: number | null;
   fat: number | null;
   fiber: number | null;
+  water: number | null;
   minerals: MineralDto[];
 }

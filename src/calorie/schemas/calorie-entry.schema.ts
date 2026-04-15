@@ -63,6 +63,9 @@ export class CalorieEntry {
 
   @Prop({ min: 0 })
   fiber!: number;
+
+  @Prop({ min: 0 })
+  water!: number;
 }
 
 export const CalorieEntrySchema = SchemaFactory.createForClass(CalorieEntry);

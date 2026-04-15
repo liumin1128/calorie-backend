@@ -80,6 +80,7 @@ export class FoodService {
       carbs: nutriments['carbohydrates_100g'] ?? null,
       fat: nutriments['fat_100g'] ?? null,
       fiber: nutriments['fiber_100g'] ?? null,
+      water: nutriments['water_100g'] ?? null,
       minerals: this.extractMinerals(nutriments),
     };
   }

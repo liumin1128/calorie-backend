@@ -70,4 +70,9 @@ export class CreateCalorieEntryDto {
   @Min(0)
   @IsOptional()
   fiber?: number;
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  water?: number;
 }
