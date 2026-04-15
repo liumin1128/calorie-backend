@@ -74,7 +74,7 @@ export class CalorieEntry {
   @Prop({ required: true, min: 0 })
   calories!: number;
 
-  /** 水分 (g) */
+  /** 水分 (ml) */
   @Prop({ min: 0 })
   water?: number;
 

@@ -181,7 +181,7 @@ export class VercelGatewayService {
 ## 营养成分要求
 对每种食物估算以下指标：
 - 能量 (kcal)
-- 水分 (g)
+- 水分 (ml)
 - 营养成分 nutrition：蛋白质 protein (g)、脂肪 fat (g)、碳水化合物 carbohydrates (g)、膳食纤维 fiber (g)
 - 矿物质 minerals：钙 calcium (mg)、镁 magnesium (mg)、钾 potassium (mg)、钠 sodium (mg)、磷 phosphorus (mg)、铁 iron (mg)、锌 zinc (mg)、锰 manganese (mg)、铜 copper (mg)、硒 selenium (μg)、碘 iodine (μg)、铬 chromium (μg)、氟 fluoride (mg)
 - minerals 中只需列出含量大于 0 的字段

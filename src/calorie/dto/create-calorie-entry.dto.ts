@@ -132,7 +132,7 @@ export class CreateCalorieEntryDto {
   @Min(0, { message: '卡路里数值不能为负数' })
   calories: number;
 
-  /** 水分 (g) */
+  /** 水分 (ml) */
   @IsNumber()
   @Min(0)
   @IsOptional()

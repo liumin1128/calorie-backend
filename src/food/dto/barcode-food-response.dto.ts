@@ -61,19 +61,10 @@ export class BarcodeFoodResponseDto {
   calories: number | null;
   /** 能量 (kJ / 每基准单位) */
   energyKj: number | null;
-  /** 水分 (g/ml per 基准单位)，饮料缺失时自动估算 */
+  /** 水分 (ml per 基准单位)，饮料缺失时自动估算 */
   water: number | null;
   /** 每基准单位营养成分 */
   nutrition: NutritionDto;
   /** 每基准单位矿物质 */
   minerals: MineralsDto;
-
-  /** 整份产品总热量 (kcal)，根据 productQuantity 计算 */
-  totalCalories: number | null;
-  /** 整份产品总水分 (ml/g) */
-  totalWater: number | null;
-  /** 整份产品总营养成分 */
-  totalNutrition: NutritionDto | null;
-  /** 整份产品总矿物质 */
-  totalMinerals: MineralsDto | null;
 }

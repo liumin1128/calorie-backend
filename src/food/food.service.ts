@@ -4,7 +4,6 @@ import { firstValueFrom } from 'rxjs';
 import {
   BarcodeFoodResponseDto,
   MineralsDto,
-  NutritionDto,
 } from './dto/barcode-food-response.dto';
 
 /** Open Food Facts nutriments 中需要提取的矿物质字段映射 */
@@ -105,7 +104,7 @@ export class FoodService {
       water = Math.round((100 - solids) * 100) / 100;
     }
 
-    const nutrition: NutritionDto = {
+    const nutrition = {
       protein: nutriments['proteins_100g'] ?? null,
       fat: nutriments['fat_100g'] ?? null,
       saturatedFat: nutriments['saturated-fat_100g'] ?? null,
@@ -116,9 +115,6 @@ export class FoodService {
     };
 
     const minerals = this.extractMinerals(nutriments);
-
-    // 根据产品总量计算整份营养（multiplier = productQuantity / 100）
-    const multiplier = productQuantity ? productQuantity / 100 : null;
 
     return {
       name: (product.product_name as string) || null,
@@ -133,14 +129,6 @@ export class FoodService {
       water,
       nutrition,
       minerals,
-      totalCalories: this.scaleValue(calories, multiplier),
-      totalWater: this.scaleValue(water, multiplier),
-      totalNutrition: multiplier
-        ? this.scaleNutrition(nutrition, multiplier)
-        : null,
-      totalMinerals: multiplier
-        ? this.scaleMinerals(minerals, multiplier)
-        : null,
     };
   }
 
@@ -155,39 +143,5 @@ export class FoodService {
       }
     }
     return minerals;
-  }
-
-  /** 按倍率缩放单个数值，保留两位小数 */
-  private scaleValue(
-    value: number | null,
-    multiplier: number | null,
-  ): number | null {
-    if (value == null || multiplier == null) return null;
-    return Math.round(value * multiplier * 100) / 100;
-  }
-
-  /** 按倍率缩放营养成分 */
-  private scaleNutrition(n: NutritionDto, multiplier: number): NutritionDto {
-    return {
-      protein: this.scaleValue(n.protein, multiplier),
-      fat: this.scaleValue(n.fat, multiplier),
-      saturatedFat: this.scaleValue(n.saturatedFat, multiplier),
-      carbohydrates: this.scaleValue(n.carbohydrates, multiplier),
-      sugars: this.scaleValue(n.sugars, multiplier),
-      fiber: this.scaleValue(n.fiber, multiplier),
-      salt: this.scaleValue(n.salt, multiplier),
-    };
-  }
-
-  /** 按倍率缩放矿物质 */
-  private scaleMinerals(m: MineralsDto, multiplier: number): MineralsDto {
-    const result: MineralsDto = {};
-    for (const key of Object.keys(m) as (keyof MineralsDto)[]) {
-      const value = m[key];
-      if (value != null) {
-        result[key] = Math.round(value * multiplier * 100) / 100;
-      }
-    }
-    return result;
   }
 }

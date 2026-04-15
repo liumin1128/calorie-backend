@@ -12,7 +12,7 @@ describe('FoodService', () => {
   });
 
   describe('lookupByBarcode - 成功查询', () => {
-    it('应返回结构化的食品营养数据（含总量计算）', async () => {
+    it('应返回结构化的食品营养数据', async () => {
       mockHttpService.get.mockReturnValue(
         of({
           data: {
@@ -72,13 +72,6 @@ describe('FoodService', () => {
           iron: 2.5,
         }),
       );
-      // 总量 = per100 × (400/100) = per100 × 4
-      expect(result.totalCalories).toBe(2156);
-      expect(result.totalNutrition).toBeTruthy();
-      expect(result.totalNutrition!.carbohydrates).toBe(230);
-      expect(result.totalNutrition!.fat).toBe(123.6);
-      expect(result.totalMinerals).toBeTruthy();
-      expect(result.totalMinerals!.sodium).toBe(172);
     });
 
     it('缺失营养字段应返回 null', async () => {
@@ -104,13 +97,9 @@ describe('FoodService', () => {
       expect(result.nutrition.sugars).toBeNull();
       expect(result.nutrition.salt).toBeNull();
       expect(result.minerals).toEqual({});
-      expect(result.totalCalories).toBeNull();
-      expect(result.totalWater).toBeNull();
-      expect(result.totalNutrition).toBeNull();
-      expect(result.totalMinerals).toBeNull();
     });
 
-    it('元气森林气泡水（per 100ml）应正确计算总量', async () => {
+    it('元气森林气泡水（per 100ml）应返回基准单位含量和估算水分', async () => {
       mockHttpService.get.mockReturnValue(
         of({
           data: {
@@ -142,17 +131,11 @@ describe('FoodService', () => {
       expect(result.nutritionDataPer).toBe('100ml');
       expect(result.productQuantity).toBe(480);
       expect(result.productQuantityUnit).toBe('ml');
+      expect(result.calories).toBe(0);
       expect(result.nutrition.carbohydrates).toBe(2.5);
       expect(result.nutrition.salt).toBe(0.0725);
-      // 总量 = per100 × 4.8
-      expect(result.totalCalories).toBe(0);
-      expect(result.totalNutrition!.carbohydrates).toBe(12);
-      expect(result.totalNutrition!.salt).toBe(0.35);
-      expect(result.totalMinerals!.sodium).toBe(139.2);
       // 饮料水分估算：100 - (0+0+2.5+0+0.0725) = 97.43 per 100ml
       expect(result.water).toBe(97.43);
-      // 总水分 = 97.43 × 4.8 = 467.66
-      expect(result.totalWater).toBe(467.66);
     });
   });
 

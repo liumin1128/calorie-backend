@@ -42,7 +42,7 @@ export interface FoodNutritionItem {
   name: string;
   /** 能量 (kcal) */
   calories: number;
-  /** 水分 (g) */
+  /** 水分 (ml) */
   water: number;
   nutrition: NutritionInfo;
   minerals: MineralsInfo;
