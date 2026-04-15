@@ -7,7 +7,7 @@ import {
   Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { CalorieType, EntrySource } from '../schemas/calorie-entry.schema';
+import { CalorieType, EntrySource, MealType } from '../schemas/calorie-entry.schema';
 
 export class QueryCalorieEntryDto {
   @Type(() => Number)
@@ -38,4 +38,8 @@ export class QueryCalorieEntryDto {
   @IsEnum(EntrySource)
   @IsOptional()
   source?: EntrySource;
+
+  @IsEnum(MealType)
+  @IsOptional()
+  mealType?: MealType;
 }

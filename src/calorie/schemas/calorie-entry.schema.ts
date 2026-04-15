@@ -13,6 +13,13 @@ export enum EntrySource {
   HEALTHKIT = 'healthkit',
 }
 
+export enum MealType {
+  BREAKFAST = 'breakfast',
+  LUNCH = 'lunch',
+  DINNER = 'dinner',
+  SNACK = 'snack',
+}
+
 @Schema({ timestamps: true })
 export class CalorieEntry {
   @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
@@ -38,6 +45,9 @@ export class CalorieEntry {
 
   @Prop({ enum: EntrySource, default: EntrySource.MANUAL })
   source!: EntrySource;
+
+  @Prop({ enum: MealType, default: MealType.SNACK })
+  mealType!: MealType;
 
   @Prop({ trim: true })
   externalId!: string;

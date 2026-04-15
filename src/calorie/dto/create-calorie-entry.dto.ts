@@ -9,7 +9,7 @@ import {
   IsArray,
   Min,
 } from 'class-validator';
-import { CalorieType, EntrySource } from '../schemas/calorie-entry.schema';
+import { CalorieType, EntrySource, MealType } from '../schemas/calorie-entry.schema';
 
 export class CreateCalorieEntryDto {
   @IsEnum(CalorieType)
@@ -38,6 +38,10 @@ export class CreateCalorieEntryDto {
   @IsEnum(EntrySource)
   @IsOptional()
   source?: EntrySource;
+
+  @IsEnum(MealType)
+  @IsOptional()
+  mealType?: MealType;
 
   @IsString()
   @IsOptional()

@@ -48,7 +48,7 @@ export class CalorieService {
    * @returns { data, total }
    */
   async findAll(userId: string, query: QueryCalorieEntryDto) {
-    const { page = 1, pageSize = 20, startDate, endDate, type, source } = query;
+    const { page = 1, pageSize = 20, startDate, endDate, type, source, mealType } = query;
     const filter: Record<string, unknown> = { userId };
 
     if (type) {
@@ -57,6 +57,10 @@ export class CalorieService {
 
     if (source) {
       filter.source = source;
+    }
+
+    if (mealType) {
+      filter.mealType = mealType;
     }
 
     if (startDate || endDate) {
