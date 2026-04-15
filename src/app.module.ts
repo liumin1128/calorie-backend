@@ -10,6 +10,7 @@ import { CalorieModule } from './calorie/calorie.module';
 import { UserModule } from './user/user.module';
 import { DynamicDataModule } from './dynamic-data/dynamic-data.module';
 import { VercelGatewayModule } from './vercel-gateway/vercel-gateway.module';
+import { FoodModule } from './food/food.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { VercelGatewayModule } from './vercel-gateway/vercel-gateway.module';
     UserModule,
     DynamicDataModule,
     VercelGatewayModule,
+    FoodModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
