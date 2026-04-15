@@ -4,7 +4,7 @@ import { CalorieService } from '../calorie/calorie.service';
 import { UserService } from '../user/user.service';
 import { VercelAiClient, ChatMessage } from './vercel-ai.client';
 import { ImageNutritionResponseDto } from './dto/image-nutrition.dto';
-import 'multer';
+import type {} from 'multer';
 
 const SYSTEM_PROMPT = `基于用户提供的身体数据、目标和近期饮食运动记录，直接给出个性化健康建议。
 
