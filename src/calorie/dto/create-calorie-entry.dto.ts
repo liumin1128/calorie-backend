@@ -129,7 +129,7 @@ export class CreateCalorieEntryDto {
 
   /** 能量 (kcal) */
   @IsNumber()
-  @Min(0.01, { message: '卡路里数值必须大于 0' })
+  @Min(0, { message: '卡路里数值不能为负数' })
   calories: number;
 
   /** 水分 (g) */
