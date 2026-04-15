@@ -41,6 +41,18 @@ export class CalorieEntry {
 
   @Prop({ trim: true })
   externalId: string;
+
+  @Prop({ min: 0 })
+  protein: number;
+
+  @Prop({ min: 0 })
+  carbs: number;
+
+  @Prop({ min: 0 })
+  fat: number;
+
+  @Prop({ min: 0 })
+  fiber: number;
 }
 
 export const CalorieEntrySchema = SchemaFactory.createForClass(CalorieEntry);

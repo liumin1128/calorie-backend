@@ -42,4 +42,24 @@ export class CreateCalorieEntryDto {
   @IsString()
   @IsOptional()
   externalId?: string;
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  protein?: number;
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  carbs?: number;
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  fat?: number;
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  fiber?: number;
 }
