@@ -49,7 +49,7 @@ export class CalorieService {
    */
   async findAll(userId: string, query: QueryCalorieEntryDto) {
     const { page = 1, pageSize = 20, startDate, endDate, type, source } = query;
-    const filter: Record<string, any> = { userId };
+    const filter: Record<string, unknown> = { userId };
 
     if (type) {
       filter.type = type;
@@ -60,9 +60,10 @@ export class CalorieService {
     }
 
     if (startDate || endDate) {
-      filter.entryDate = {};
-      if (startDate) filter.entryDate.$gte = new Date(startDate);
-      if (endDate) filter.entryDate.$lte = new Date(endDate);
+      const entryDate: { $gte?: Date; $lte?: Date } = {};
+      if (startDate) entryDate.$gte = new Date(startDate);
+      if (endDate) entryDate.$lte = new Date(endDate);
+      filter.entryDate = entryDate;
     }
 
     const [data, total] = await Promise.all([
@@ -160,7 +161,12 @@ export class CalorieService {
       },
     ];
 
-    const results = await this.calorieModel.aggregate(pipeline).exec();
+    const results = await this.calorieModel
+      .aggregate<{
+        _id: { date: string; type: CalorieType };
+        total: number;
+      }>(pipeline)
+      .exec();
 
     const summary: Record<string, { totalIntake: number; totalBurn: number }> =
       {};

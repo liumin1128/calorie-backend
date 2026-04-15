@@ -3,7 +3,7 @@ import {
   Controller,
   Get,
   Post,
-  Request,
+  Req,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import type { AuthenticatedRequest } from '../auth/interfaces/authenticated-request.interface';
 import { SuggestDto } from './dto/suggest.dto';
 import { VercelGatewayService } from './vercel-gateway.service';
 
@@ -44,7 +45,7 @@ export class VercelGatewayController {
    */
   @UseGuards(JwtAuthGuard)
   @Post('ai/suggest')
-  getSuggestion(@Request() req, @Body() dto: SuggestDto) {
+  getSuggestion(@Req() req: AuthenticatedRequest, @Body() dto: SuggestDto) {
     return this.vercelGatewayService.getSuggestion(req.user.sub, dto.question);
   }
 

@@ -66,34 +66,35 @@ export class DynamicDataService {
     const { dayStart } = this.getDayRange(startDate);
     const { dayEnd } = this.getDayRange(endDate);
 
-    const results = await this.dynamicDataModel.aggregate([
-      {
-        $match: {
-          userId: new Types.ObjectId(userId),
-          category,
-          recordedAt: { $gte: dayStart, $lte: dayEnd },
-        },
-      },
-      { $sort: { recordedAt: 1 } },
-      {
-        $group: {
-          _id: {
-            $dateToString: { format: '%Y-%m-%d', date: '$recordedAt' },
+    const results: Array<{ date: string; value: number; recordedAt: Date }> =
+      await this.dynamicDataModel.aggregate([
+        {
+          $match: {
+            userId: new Types.ObjectId(userId),
+            category,
+            recordedAt: { $gte: dayStart, $lte: dayEnd },
           },
-          value: { $last: '$value' },
-          recordedAt: { $last: '$recordedAt' },
         },
-      },
-      { $sort: { _id: 1 } },
-      {
-        $project: {
-          _id: 0,
-          date: '$_id',
-          value: 1,
-          recordedAt: 1,
+        { $sort: { recordedAt: 1 } },
+        {
+          $group: {
+            _id: {
+              $dateToString: { format: '%Y-%m-%d', date: '$recordedAt' },
+            },
+            value: { $last: '$value' },
+            recordedAt: { $last: '$recordedAt' },
+          },
         },
-      },
-    ]);
+        { $sort: { _id: 1 } },
+        {
+          $project: {
+            _id: 0,
+            date: '$_id',
+            value: 1,
+            recordedAt: 1,
+          },
+        },
+      ]);
 
     return results;
   }
@@ -110,7 +111,7 @@ export class DynamicDataService {
     categories: string[],
     beforeDate?: Date,
   ): Promise<Map<string, { value: number; recordedAt: Date }>> {
-    const matchCondition: Record<string, any> = {
+    const matchCondition: Record<string, unknown> = {
       userId: new Types.ObjectId(userId),
       category: { $in: categories },
     };
@@ -118,19 +119,20 @@ export class DynamicDataService {
       matchCondition.recordedAt = { $lte: beforeDate };
     }
 
-    const results = await this.dynamicDataModel.aggregate([
-      {
-        $match: matchCondition,
-      },
-      { $sort: { recordedAt: -1 } },
-      {
-        $group: {
-          _id: '$category',
-          value: { $first: '$value' },
-          recordedAt: { $first: '$recordedAt' },
+    const results: Array<{ _id: string; value: number; recordedAt: Date }> =
+      await this.dynamicDataModel.aggregate([
+        {
+          $match: matchCondition,
         },
-      },
-    ]);
+        { $sort: { recordedAt: -1 } },
+        {
+          $group: {
+            _id: '$category',
+            value: { $first: '$value' },
+            recordedAt: { $first: '$recordedAt' },
+          },
+        },
+      ]);
 
     const map = new Map<string, { value: number; recordedAt: Date }>();
     for (const item of results) {

@@ -5,13 +5,14 @@ import {
   Body,
   Query,
   UseGuards,
-  Request,
+  Req,
 } from '@nestjs/common';
 import { DynamicDataService } from './dynamic-data.service';
 import { CreateDynamicDataDto } from './dto/create-dynamic-data.dto';
 import { QueryLatestDto } from './dto/query-latest.dto';
 import { QueryTrendDto } from './dto/query-trend.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import type { AuthenticatedRequest } from '../auth/interfaces/authenticated-request.interface';
 
 @UseGuards(JwtAuthGuard)
 @Controller('dynamic-data')
@@ -30,7 +31,7 @@ export class DynamicDataController {
    * @returns 创建的动态数据记录
    */
   @Post()
-  create(@Request() req, @Body() dto: CreateDynamicDataDto) {
+  create(@Req() req: AuthenticatedRequest, @Body() dto: CreateDynamicDataDto) {
     return this.dynamicDataService.create(req.user.sub, dto);
   }
 
@@ -45,7 +46,7 @@ export class DynamicDataController {
    * @returns 当天最新一条记录，无数据返回 null
    */
   @Get('latest')
-  findLatest(@Request() req, @Query() query: QueryLatestDto) {
+  findLatest(@Req() req: AuthenticatedRequest, @Query() query: QueryLatestDto) {
     const date = query.date ? new Date(query.date) : undefined;
     return this.dynamicDataService.findLatest(
       req.user.sub,
@@ -67,7 +68,7 @@ export class DynamicDataController {
    * @throws BadRequestException startDate 晚于 endDate
    */
   @Get('trend')
-  findTrend(@Request() req, @Query() query: QueryTrendDto) {
+  findTrend(@Req() req: AuthenticatedRequest, @Query() query: QueryTrendDto) {
     query.validateDateRange();
     return this.dynamicDataService.findTrend(
       req.user.sub,

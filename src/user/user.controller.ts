@@ -5,11 +5,12 @@ import {
   Body,
   Query,
   UseGuards,
-  Request,
+  Req,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import type { AuthenticatedRequest } from '../auth/interfaces/authenticated-request.interface';
 
 @Controller('user')
 export class UserController {
@@ -29,7 +30,10 @@ export class UserController {
    */
   @UseGuards(JwtAuthGuard)
   @Put('profile')
-  updateProfile(@Request() req, @Body() dto: UpdateProfileDto) {
+  updateProfile(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: UpdateProfileDto,
+  ) {
     return this.userService.updateProfile(req.user.sub, dto);
   }
 
@@ -43,7 +47,10 @@ export class UserController {
    */
   @UseGuards(JwtAuthGuard)
   @Get('full-profile')
-  getFullProfile(@Request() req, @Query('date') date?: string) {
+  getFullProfile(
+    @Req() req: AuthenticatedRequest,
+    @Query('date') date?: string,
+  ) {
     const parsedDate = date ? new Date(date) : undefined;
     return this.userService.getFullProfile(req.user.sub, parsedDate);
   }

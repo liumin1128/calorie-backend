@@ -8,7 +8,7 @@ import {
   Param,
   Query,
   UseGuards,
-  Request,
+  Req,
   Res,
 } from '@nestjs/common';
 import type { Response } from 'express';
@@ -18,6 +18,7 @@ import { UpdateCalorieEntryDto } from './dto/update-calorie-entry.dto';
 import { QueryCalorieEntryDto } from './dto/query-calorie-entry.dto';
 import { QueryDailySummaryDto } from './dto/query-daily-summary.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import type { AuthenticatedRequest } from '../auth/interfaces/authenticated-request.interface';
 
 @UseGuards(JwtAuthGuard)
 @Controller('calorie')
@@ -33,7 +34,7 @@ export class CalorieController {
    */
   @Post()
   async create(
-    @Request() req,
+    @Req() req: AuthenticatedRequest,
     @Body() dto: CreateCalorieEntryDto,
     @Res() res: Response,
   ) {
@@ -48,7 +49,10 @@ export class CalorieController {
    * @returns { data, total }
    */
   @Get()
-  findAll(@Request() req, @Query() query: QueryCalorieEntryDto) {
+  findAll(
+    @Req() req: AuthenticatedRequest,
+    @Query() query: QueryCalorieEntryDto,
+  ) {
     return this.calorieService.findAll(req.user.sub, query);
   }
 
@@ -59,7 +63,10 @@ export class CalorieController {
    * @returns 以日期为 key 的对象，value 包含 totalIntake 和 totalBurn
    */
   @Get('daily-summary')
-  getDailySummary(@Request() req, @Query() query: QueryDailySummaryDto) {
+  getDailySummary(
+    @Req() req: AuthenticatedRequest,
+    @Query() query: QueryDailySummaryDto,
+  ) {
     return this.calorieService.getDailySummary(req.user.sub, query);
   }
 
@@ -71,7 +78,7 @@ export class CalorieController {
    * @throws NotFoundException 条目不存在
    */
   @Get(':id')
-  findOne(@Request() req, @Param('id') id: string) {
+  findOne(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
     return this.calorieService.findOne(req.user.sub, id);
   }
 
@@ -85,7 +92,7 @@ export class CalorieController {
    */
   @Patch(':id')
   update(
-    @Request() req,
+    @Req() req: AuthenticatedRequest,
     @Param('id') id: string,
     @Body() dto: UpdateCalorieEntryDto,
   ) {
@@ -100,7 +107,7 @@ export class CalorieController {
    * @throws NotFoundException 条目不存在
    */
   @Delete(':id')
-  remove(@Request() req, @Param('id') id: string) {
+  remove(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
     return this.calorieService.remove(req.user.sub, id);
   }
 }
