@@ -7,7 +7,11 @@ import {
   Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { CalorieType, EntrySource, MealType } from '../schemas/calorie-entry.schema';
+import {
+  CalorieType,
+  EntrySource,
+  MealType,
+} from '../schemas/calorie-entry.schema';
 
 export class QueryCalorieEntryDto {
   @Type(() => Number)
