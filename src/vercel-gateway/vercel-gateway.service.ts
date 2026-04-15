@@ -243,7 +243,10 @@ export class VercelGatewayService {
       // AI 可能返回 markdown 代码块包裹的 JSON，提取纯 JSON
       const jsonMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
       const jsonStr = jsonMatch ? jsonMatch[1].trim() : raw.trim();
-      const parsed = JSON.parse(jsonStr);
+      const parsed = JSON.parse(jsonStr) as {
+        foods?: ImageNutritionResponseDto['foods'];
+        summary?: string;
+      };
       return {
         foods: parsed.foods ?? [],
         summary: parsed.summary ?? '',
