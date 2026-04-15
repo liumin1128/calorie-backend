@@ -29,7 +29,7 @@ export class CalorieService {
       const result = await this.calorieModel.findOneAndUpdate(
         { userId, externalId: dto.externalId },
         { $set: { ...dto, userId } },
-        { new: true, upsert: true, includeResultMetadata: true },
+        { returnDocument: 'after', upsert: true, includeResultMetadata: true },
       );
       return {
         data: result.value,
@@ -116,7 +116,7 @@ export class CalorieService {
    */
   async update(userId: string, id: string, dto: UpdateCalorieEntryDto) {
     const entry = await this.calorieModel
-      .findOneAndUpdate({ _id: id, userId }, dto, { new: true })
+      .findOneAndUpdate({ _id: id, userId }, dto, { returnDocument: 'after' })
       .exec();
     if (!entry) {
       throw new NotFoundException('条目不存在');

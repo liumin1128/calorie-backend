@@ -48,7 +48,7 @@ describe('UserService', () => {
       expect(mockUserModel.findByIdAndUpdate).toHaveBeenCalledWith(
         'user-id',
         { $set: { gender: 'male' } },
-        { new: true },
+        { returnDocument: 'after' },
       );
       expect(result).toEqual(mockUser);
     });

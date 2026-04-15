@@ -160,7 +160,7 @@ describe('CalorieService - source 字段', () => {
     expect(mockModel.findOneAndUpdate).toHaveBeenCalledWith(
       { userId: 'userId', externalId: 'hk-uuid-001' },
       { $set: expect.objectContaining({ source: EntrySource.HEALTHKIT }) },
-      { new: true, upsert: true, includeResultMetadata: true },
+      { returnDocument: 'after', upsert: true, includeResultMetadata: true },
     );
     expect(result.data).toEqual(mockEntry);
     expect(result.isNew).toBe(true);
@@ -243,7 +243,7 @@ describe('CalorieService - externalId 去重', () => {
     expect(mockModel.findOneAndUpdate).toHaveBeenCalledWith(
       { userId: 'userId', externalId: 'hk-001' },
       expect.any(Object),
-      { new: true, upsert: true, includeResultMetadata: true },
+      { returnDocument: 'after', upsert: true, includeResultMetadata: true },
     );
   });
 

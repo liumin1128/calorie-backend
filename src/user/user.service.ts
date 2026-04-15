@@ -20,7 +20,7 @@ export class UserService {
    */
   async updateProfile(userId: string, dto: UpdateProfileDto) {
     const user = await this.userModel
-      .findByIdAndUpdate(userId, { $set: dto }, { new: true })
+      .findByIdAndUpdate(userId, { $set: dto }, { returnDocument: 'after' })
       .select('-password');
     return user;
   }
