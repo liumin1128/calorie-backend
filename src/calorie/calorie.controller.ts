@@ -11,6 +11,7 @@ import {
   Req,
   Res,
 } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { CalorieService } from './calorie.service';
 import { CreateCalorieEntryDto } from './dto/create-calorie-entry.dto';
@@ -20,6 +21,8 @@ import { QueryDailySummaryDto } from './dto/query-daily-summary.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import type { AuthenticatedRequest } from '../auth/interfaces/authenticated-request.interface';
 
+@ApiTags('卡路里记录')
+@ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('calorie')
 export class CalorieController {

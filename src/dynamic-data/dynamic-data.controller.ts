@@ -7,6 +7,7 @@ import {
   UseGuards,
   Req,
 } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { DynamicDataService } from './dynamic-data.service';
 import { CreateDynamicDataDto } from './dto/create-dynamic-data.dto';
 import { QueryLatestDto } from './dto/query-latest.dto';
@@ -14,6 +15,8 @@ import { QueryTrendDto } from './dto/query-trend.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import type { AuthenticatedRequest } from '../auth/interfaces/authenticated-request.interface';
 
+@ApiTags('动态数据')
+@ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('dynamic-data')
 export class DynamicDataController {

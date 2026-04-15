@@ -1,9 +1,12 @@
 import { Controller, Get, Param, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { FoodService } from './food.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { BarcodeParamDto } from './dto/barcode-param.dto';
 import { BarcodeFoodResponseDto } from './dto/barcode-food-response.dto';
 
+@ApiTags('食品')
+@ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('food')
 export class FoodController {

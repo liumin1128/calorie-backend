@@ -1,4 +1,5 @@
 import { Controller, Post, Get, Body, UseGuards, Req } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
@@ -6,6 +7,7 @@ import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import type { AuthenticatedRequest } from './interfaces/authenticated-request.interface';
 
+@ApiTags('认证')
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
@@ -48,6 +50,7 @@ export class AuthController {
    * @param req.user.sub - 用户 ID（从 JWT payload 提取）
    * @returns 用户信息（不含密码）
    */
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @Get('profile')
   getProfile(@Req() req: AuthenticatedRequest) {

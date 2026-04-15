@@ -9,6 +9,7 @@ import {
   UseInterceptors,
   BadRequestException,
 } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import type { AuthenticatedRequest } from '../auth/interfaces/authenticated-request.interface';
@@ -24,6 +25,8 @@ const ALLOWED_MIME_TYPES = [
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
+@ApiTags('AI 网关')
+@ApiBearerAuth()
 @Controller('gateway')
 export class VercelGatewayController {
   constructor(private readonly vercelGatewayService: VercelGatewayService) {}
@@ -58,6 +61,16 @@ export class VercelGatewayController {
    */
   @UseGuards(JwtAuthGuard)
   @Post('ai/image-nutrition')
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        image: { type: 'string', format: 'binary', description: '食物图片' },
+      },
+      required: ['image'],
+    },
+  })
   @UseInterceptors(
     FileInterceptor('image', {
       limits: { fileSize: MAX_FILE_SIZE },
