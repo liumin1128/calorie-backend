@@ -96,6 +96,10 @@ export class CalorieEntry {
   @Prop({ enum: MealType, default: MealType.SNACK })
   mealType!: MealType;
 
+  /** 运动时长 (min)，仅 type=burn 时有效 */
+  @Prop({ min: 0 })
+  duration?: number;
+
   @Prop({ trim: true })
   externalId!: string;
 

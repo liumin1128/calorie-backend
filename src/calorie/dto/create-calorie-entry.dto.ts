@@ -162,6 +162,12 @@ export class CreateCalorieEntryDto {
   @IsOptional()
   mealType?: MealType;
 
+  /** 运动时长 (min)，仅 type=burn 时有效 */
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  duration?: number;
+
   @IsString()
   @IsOptional()
   externalId?: string;
