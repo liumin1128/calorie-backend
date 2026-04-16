@@ -1,4 +1,4 @@
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CalorieService } from '../calorie/calorie.service';
 import { UserService } from '../user/user.service';
@@ -24,6 +24,8 @@ const SYSTEM_PROMPT = `基于用户提供的身体数据、目标和近期饮食
 
 @Injectable()
 export class VercelGatewayService {
+  private readonly logger = new Logger(VercelGatewayService.name);
+
   constructor(
     private readonly aiClient: VercelAiClient,
     private readonly configService: ConfigService,
@@ -141,6 +143,7 @@ export class VercelGatewayService {
    - 如果文字中明确标注了带营养单位（kcal、大卡、千焦、kJ、g、mg）的数值，且与独立估算偏差在合理范围（±50%）内，采信文字标注值
    - 如果文字数值与独立估算偏差过大（超过±50%），以独立估算值为准，在 summary 中说明
    - 如果文字中没有营养单位标注，一律以独立估算值为准
+5. **单一主体拆解（必做）**：当画面中仅有一个食物主体（如一碗面、一份盖饭、一个汉堡套餐），必须将其拆解为可识别的食材组成部分（如面条、汤底、肉片、蔬菜…），**每种食材单独输出一条**，以便用户了解各成分的营养贡献。只有完全无法拆分的单一食材（如一根香蕉、一杯纯牛奶）才允许输出单条
 
 ## 文字识别防误判规则
 - ¥、￥、元、USD、$、价、售价、原价、特价 等前后的数字是**价格**，严禁作为营养数据
@@ -189,6 +192,7 @@ export class VercelGatewayService {
 ## 输出格式
 - **图片中有几个食物主体，就必须输出几条**，不得遗漏、合并或将任何食物降级为 summary 中的附注
 - **每种食物单独一条**，不要将多种食物合并成一个条目
+- **单一主体时拆解输出**：若只有一个食物主体，将其拆解为可识别的食材成分，每种食材各输出一条（如"牛肉面"拆为"面条"、"牛肉"、"汤底"等）
 - 请严格按以下 JSON 格式返回，不要包含任何多余文本：
 {
   "foods": [
@@ -214,7 +218,55 @@ export class VercelGatewayService {
 }`;
 
   /**
-   * 分析食物图片的营养成分
+   * 快速预判提示词：轻量 AI 判断图片复杂度，简单图片直接出结果
+   * 复杂图片快速返回 complex 标记，交由深度 AI 处理
+   */
+  private static readonly IMAGE_TRIAGE_PROMPT = `你是一位高效的食物图片分类与快速分析助手。
+
+## 任务
+快速判断图片中的食物复杂度，并按以下规则处理：
+
+### 简单图片（直接分析）
+符合以下**所有**条件时视为简单图片，直接输出完整的营养分析 JSON：
+- 食物主体 ≤ 2 个（如一碗饭、一杯奶茶）
+- 不需要拆解（是单一食材，如香蕉、牛奶、面包）
+- 没有复杂的文字信息需要交叉验证
+
+简单图片直接按以下 JSON 格式输出：
+{
+  "foods": [
+    {
+      "name": "食物名称",
+      "calories": 数值,
+      "water": 数值,
+      "nutrition": { "protein": 数值, "fat": 数值, "carbohydrates": 数值, "fiber": 数值 },
+      "minerals": { "sodium": 数值, "calcium": 数值 },
+      "unit": "份/个/碗/克等",
+      "quantity": 数值
+    }
+  ],
+  "summary": "简要分析描述"
+}
+
+### 复杂图片（快速标记）
+符合以下**任一**条件时视为复杂图片，只返回标记：
+- 食物主体 ≥ 3 个
+- 需要拆解（如一碗面里有面条、肉、蔬菜等多种食材）
+- 包含菜单/外卖截图等需要文字交叉验证的场景
+- 火锅、自助餐等多种食材混合场景
+
+复杂图片只返回：
+{ "complex": true, "reason": "简述复杂原因" }
+
+## 要求
+- **所有营养数值字段禁止为 0**（除非该食物确实不含该成分）
+- minerals 中只列出含量大于 0 的字段
+- 严格按 JSON 格式返回，不要包含任何多余文本`;
+
+  /**
+   * 分析食物图片的营养成分（两阶段策略）
+   * 第一阶段：轻量 AI 快速分析，简单图片直接返回结果
+   * 第二阶段：复杂图片交由深度 AI 精细分析
    * @param file 用户上传的图片文件
    * @returns 结构化营养分析结果
    */
@@ -223,46 +275,101 @@ export class VercelGatewayService {
   ): Promise<ImageNutritionResponseDto> {
     const base64 = file.buffer.toString('base64');
     const dataUrl = `data:${file.mimetype};base64,${base64}`;
+    const model = 'openai/gpt-5-nano';
 
-    const messages: ChatMessage[] = [
-      { role: 'system', content: VercelGatewayService.IMAGE_NUTRITION_PROMPT },
+    const userContent: (
+      | { type: 'image_url'; image_url: { url: string } }
+      | { type: 'text'; text: string }
+    )[] = [
+      { type: 'image_url', image_url: { url: dataUrl } },
       {
-        role: 'user',
-        content: [
-          {
-            type: 'image_url',
-            image_url: { url: dataUrl },
-          },
-          {
-            type: 'text',
-            text: '请分析这张图片中的食物营养成分和卡路里。如果图中有文字信息请参考。返回值要严格按照指定的 JSON 格式，不要添加任何多余的解释或文本。', // 额外强调输出格式要求
-          },
-        ],
+        type: 'text',
+        text: '请分析这张图片中的食物营养成分和卡路里。如果图中有文字信息请参考。返回值要严格按照指定的 JSON 格式，不要添加任何多余的解释或文本。',
       },
     ];
 
-    const model = 'openai/gpt-5-nano';
-    const raw = await this.aiClient.chatWithModel(model, messages, {
+    // --- 第一阶段：轻量快速分析 ---
+    this.logger.log('[Triage] 开始快速分析图片...');
+    const triageStart = Date.now();
+    const triageMessages: ChatMessage[] = [
+      { role: 'system', content: VercelGatewayService.IMAGE_TRIAGE_PROMPT },
+      { role: 'user', content: userContent },
+    ];
+
+    const triageRaw = await this.aiClient.chatWithModel(model, triageMessages, {
       maxTokens: 4096,
       reasoning: { effort: 'minimal' },
       timeout: 60000,
     });
 
+    const triageDuration = Date.now() - triageStart;
+    const triageResult = this.parseAiJson(triageRaw);
+
+    // 简单图片：轻量 AI 已直接给出结果
+    if (triageResult && !triageResult.complex && triageResult.foods) {
+      this.logger.log(
+        `[Fast] 简单图片直接返回结果 | 耗时: ${triageDuration}ms | 食物数: ${triageResult.foods.length}`,
+      );
+      return {
+        foods: triageResult.foods,
+        summary: triageResult.summary ?? '',
+        model: `${model} (fast)`,
+      };
+    }
+
+    // --- 第二阶段：复杂图片，深度分析 ---
+    this.logger.log(
+      `[Deep] 复杂图片，进入深度分析 | Triage 耗时: ${triageDuration}ms | 原因: ${triageResult?.reason ?? '解析失败或未返回 foods'}`,
+    );
+    const deepStart = Date.now();
+    const deepModel = 'google/gemini-2.5-flash-image';
+    const deepMessages: ChatMessage[] = [
+      { role: 'system', content: VercelGatewayService.IMAGE_NUTRITION_PROMPT },
+      { role: 'user', content: userContent },
+    ];
+
+    const deepRaw = await this.aiClient.chatWithModel(deepModel, deepMessages, {
+      maxTokens: 16384,
+      timeout: 120000,
+    });
+
+    const deepDuration = Date.now() - deepStart;
+    const deepResult = this.parseAiJson(deepRaw);
+    if (!deepResult?.foods) {
+      this.logger.error(`[Deep] 深度分析解析失败 | 耗时: ${deepDuration}ms`);
+      throw new HttpException('AI 返回内容解析失败', HttpStatus.BAD_GATEWAY);
+    }
+
+    this.logger.log(
+      `[Deep] 深度分析完成 | 耗时: ${deepDuration}ms | 总耗时: ${triageDuration + deepDuration}ms | 食物数: ${deepResult.foods.length}`,
+    );
+    return {
+      foods: deepResult.foods,
+      summary: deepResult.summary ?? '',
+      model: `${deepModel} (deep)`,
+    };
+  }
+
+  /**
+   * 从 AI 原始输出中提取并解析 JSON
+   */
+  private parseAiJson(raw: string): {
+    foods?: ImageNutritionResponseDto['foods'];
+    summary?: string;
+    complex?: boolean;
+    reason?: string;
+  } | null {
     try {
-      // AI 可能返回 markdown 代码块包裹的 JSON，提取纯 JSON
       const jsonMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
       const jsonStr = jsonMatch ? jsonMatch[1].trim() : raw.trim();
-      const parsed = JSON.parse(jsonStr) as {
+      return JSON.parse(jsonStr) as {
         foods?: ImageNutritionResponseDto['foods'];
         summary?: string;
-      };
-      return {
-        foods: parsed.foods ?? [],
-        summary: parsed.summary ?? '',
-        model,
+        complex?: boolean;
+        reason?: string;
       };
     } catch {
-      throw new HttpException('AI 返回内容解析失败', HttpStatus.BAD_GATEWAY);
+      return null;
     }
   }
 }
