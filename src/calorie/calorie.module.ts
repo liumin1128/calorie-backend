@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { AiModule } from '../ai/ai.module';
 import { CalorieService } from './calorie.service';
 import { CalorieController } from './calorie.controller';
 import {
@@ -9,6 +10,7 @@ import {
 
 @Module({
   imports: [
+    AiModule,
     MongooseModule.forFeature([
       { name: CalorieEntry.name, schema: CalorieEntrySchema },
     ]),

@@ -14,6 +14,7 @@ import {
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { CalorieService } from './calorie.service';
+import { CalorieCommentResponseDto } from './dto/calorie-comment-response.dto';
 import { CreateCalorieEntryDto } from './dto/create-calorie-entry.dto';
 import { UpdateCalorieEntryDto } from './dto/update-calorie-entry.dto';
 import { QueryCalorieEntryDto } from './dto/query-calorie-entry.dto';
@@ -71,6 +72,22 @@ export class CalorieController {
     @Query() query: QueryDailySummaryDto,
   ) {
     return this.calorieService.getDailySummary(req.user.sub, query);
+  }
+
+  /**
+   * @description 为单条卡路里记录生成 AI 点评
+   * @param req JWT 请求对象
+   * @param id 条目 ID
+   * @returns { comment, model }
+   * @throws NotFoundException 条目不存在
+   * @throws BadGatewayException AI 点评暂时不可用
+   */
+  @Post(':id/comment')
+  comment(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+  ): Promise<CalorieCommentResponseDto> {
+    return this.calorieService.commentOnEntry(req.user.sub, id);
   }
 
   /**

@@ -1,6 +1,15 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadGatewayException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import {
+  ChatMessage,
+  VercelAiClient,
+} from '../vercel-gateway/vercel-ai.client';
 import {
   CalorieEntry,
   CalorieEntryDocument,
@@ -13,9 +22,15 @@ import { QueryDailySummaryDto } from './dto/query-daily-summary.dto';
 
 @Injectable()
 export class CalorieService {
+  private static readonly COMMENT_MODEL = 'openai/gpt-5.4-nano';
+  private static readonly COMMENT_SYSTEM_PROMPT = `请点评这条卡路里记录（饮食/运动）。要求：健康积极，不健康的记录温和提醒，健康的给予鼓励。语言简练，40字以内，直接点评，无需问候。`;
+
+  private readonly logger = new Logger(CalorieService.name);
+
   constructor(
     @InjectModel(CalorieEntry.name)
     private calorieModel: Model<CalorieEntryDocument>,
+    private readonly aiClient: VercelAiClient,
   ) {}
 
   /**
@@ -259,5 +274,80 @@ export class CalorieService {
       intakeEntries,
       burnEntries,
     };
+  }
+
+  /**
+   * @description 为单条卡路里记录生成 AI 点评
+   * @param userId 当前用户 ID
+   * @param id 条目 ID
+   * @returns { comment, model }
+   * @throws NotFoundException 条目不存在或不属于当前用户
+   * @throws BadGatewayException AI 点评暂时不可用
+   */
+  async commentOnEntry(userId: string, id: string) {
+    const entry = await this.findOne(userId, id);
+    const userMessage = this.buildEntryCommentMessage(entry);
+    const messages: ChatMessage[] = [
+      {
+        role: 'system',
+        content: CalorieService.COMMENT_SYSTEM_PROMPT,
+      },
+      { role: 'user', content: userMessage },
+    ];
+
+    const rawComment = await this.aiClient.chatWithModel(
+      CalorieService.COMMENT_MODEL,
+      messages,
+      { maxTokens: 100 },
+    );
+    const comment = this.normalizeComment(rawComment);
+
+    if (!comment) {
+      this.logger.warn(`AI returned unusable comment for calorie entry ${id}`);
+      throw new BadGatewayException('AI 点评暂时不可用');
+    }
+
+    return {
+      comment,
+      model: CalorieService.COMMENT_MODEL,
+    };
+  }
+
+  private buildEntryCommentMessage(entry: CalorieEntryDocument) {
+    const parts = [
+      `记录类型：${entry.type === CalorieType.INTAKE ? '饮食' : '运动'}`,
+      `标题：${entry.title}`,
+      `卡路里：${entry.calories} kcal`,
+      `记录时间：${new Date(entry.entryDate).toISOString()}`,
+    ];
+
+    if (entry.description) {
+      parts.push(`描述：${entry.description}`);
+    }
+
+    if (entry.type === CalorieType.INTAKE && entry.mealType) {
+      parts.push(`餐次：${entry.mealType}`);
+    }
+
+    if (entry.type === CalorieType.BURN && entry.duration) {
+      parts.push(`时长：${entry.duration} 分钟`);
+    }
+
+    return parts.join('\n');
+  }
+
+  private normalizeComment(rawComment: string) {
+    const cleaned = rawComment
+      .replace(/[\r\n]+/g, ' ')
+      .replace(/^(你好|您好|嗨|哈喽|hi|hello)[，,！!。\s]*/i, '')
+      .replace(/^点评[:：\s]*/i, '')
+      .replace(/["“”]/g, '')
+      .trim();
+
+    if (!cleaned) {
+      return '';
+    }
+
+    return cleaned.length <= 40 ? cleaned : cleaned.slice(0, 40).trim();
   }
 }

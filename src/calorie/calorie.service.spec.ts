@@ -1,18 +1,167 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/mongoose';
 import { CalorieService } from './calorie.service';
+import { VercelAiClient } from '../vercel-gateway/vercel-ai.client';
 import {
   CalorieEntry,
   CalorieType,
   EntrySource,
 } from './schemas/calorie-entry.schema';
 
+describe('CalorieService - commentOnEntry', () => {
+  let service: CalorieService;
+  let mockModel: any;
+  let mockAiClient: { chatWithModel: jest.Mock };
+
+  beforeEach(async () => {
+    mockModel = {
+      findOne: jest.fn().mockReturnValue({ exec: jest.fn() }),
+      create: jest.fn(),
+      find: jest.fn().mockReturnValue({
+        sort: jest.fn().mockReturnValue({
+          skip: jest.fn().mockReturnValue({
+            limit: jest
+              .fn()
+              .mockReturnValue({ exec: jest.fn().mockResolvedValue([]) }),
+          }),
+        }),
+      }),
+      countDocuments: jest
+        .fn()
+        .mockReturnValue({ exec: jest.fn().mockResolvedValue(0) }),
+      aggregate: jest.fn().mockReturnValue({ exec: jest.fn() }),
+      findOneAndUpdate: jest.fn().mockReturnValue({ exec: jest.fn() }),
+      findOneAndDelete: jest.fn().mockReturnValue({ exec: jest.fn() }),
+    };
+    mockAiClient = {
+      chatWithModel: jest.fn(),
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        CalorieService,
+        { provide: getModelToken(CalorieEntry.name), useValue: mockModel },
+        { provide: VercelAiClient, useValue: mockAiClient },
+      ],
+    }).compile();
+
+    service = module.get<CalorieService>(CalorieService);
+  });
+
+  it('应为饮食记录生成点评', async () => {
+    mockModel.findOne.mockReturnValue({
+      exec: jest.fn().mockResolvedValue({
+        type: CalorieType.INTAKE,
+        title: '炸鸡套餐',
+        calories: 900,
+        description: '夜宵',
+        mealType: 'snack',
+        entryDate: new Date('2026-04-21T12:00:00Z'),
+      }),
+    });
+    mockAiClient.chatWithModel.mockResolvedValue(
+      '这顿偏油，偶尔解馋可以，下一餐清淡些。',
+    );
+
+    const result = await service.commentOnEntry('user-1', 'entry-1');
+
+    expect(result).toEqual({
+      comment: '这顿偏油，偶尔解馋可以，下一餐清淡些。',
+      model: 'openai/gpt-5.4-nano',
+    });
+    expect(mockAiClient.chatWithModel).toHaveBeenCalledWith(
+      'openai/gpt-5.4-nano',
+      expect.arrayContaining([
+        expect.objectContaining({ role: 'system' }),
+        expect.objectContaining({
+          role: 'user',
+          content: expect.stringContaining('记录类型：饮食'),
+        }),
+      ]),
+      { maxTokens: 100 },
+    );
+  });
+
+  it('应为运动记录生成点评', async () => {
+    mockModel.findOne.mockReturnValue({
+      exec: jest.fn().mockResolvedValue({
+        type: CalorieType.BURN,
+        title: '跑步',
+        calories: 360,
+        description: '晚饭后慢跑',
+        duration: 35,
+        entryDate: new Date('2026-04-21T12:00:00Z'),
+      }),
+    });
+    mockAiClient.chatWithModel.mockResolvedValue(
+      '节奏不错，持续保持，这次运动很加分。',
+    );
+
+    const result = await service.commentOnEntry('user-1', 'entry-1');
+
+    expect(result.comment).toBe('节奏不错，持续保持，这次运动很加分。');
+    expect(mockAiClient.chatWithModel.mock.calls[0][1][1].content).toContain(
+      '时长：35 分钟',
+    );
+  });
+
+  it('条目不存在时应抛出 404', async () => {
+    mockModel.findOne.mockReturnValue({
+      exec: jest.fn().mockResolvedValue(null),
+    });
+
+    await expect(service.commentOnEntry('user-1', 'entry-1')).rejects.toThrow(
+      '条目不存在',
+    );
+    expect(mockAiClient.chatWithModel).not.toHaveBeenCalled();
+  });
+
+  it('AI 返回空白内容时应抛出 502', async () => {
+    mockModel.findOne.mockReturnValue({
+      exec: jest.fn().mockResolvedValue({
+        type: CalorieType.INTAKE,
+        title: '沙拉',
+        calories: 220,
+        entryDate: new Date('2026-04-21T12:00:00Z'),
+      }),
+    });
+    mockAiClient.chatWithModel.mockResolvedValue('   ');
+
+    await expect(service.commentOnEntry('user-1', 'entry-1')).rejects.toThrow(
+      'AI 点评暂时不可用',
+    );
+  });
+
+  it('应规范化寒暄、换行和超长文本', async () => {
+    mockModel.findOne.mockReturnValue({
+      exec: jest.fn().mockResolvedValue({
+        type: CalorieType.INTAKE,
+        title: '蔬菜碗',
+        calories: 280,
+        entryDate: new Date('2026-04-21T12:00:00Z'),
+      }),
+    });
+    mockAiClient.chatWithModel.mockResolvedValue(
+      '你好，\n这顿搭配清爽均衡，继续保持这样的选择，长期更容易稳住热量。',
+    );
+
+    const result = await service.commentOnEntry('user-1', 'entry-1');
+
+    expect(result.comment).toBe(
+      '这顿搭配清爽均衡，继续保持这样的选择，长期更容易稳住热量。',
+    );
+    expect(result.comment.length).toBeLessThanOrEqual(40);
+  });
+});
+
 describe('CalorieService - getDailySummary', () => {
   let service: CalorieService;
   let mockAggregate: jest.Mock;
+  let mockAiClient: { chatWithModel: jest.Mock };
 
   beforeEach(async () => {
     mockAggregate = jest.fn().mockReturnValue({ exec: jest.fn() });
+    mockAiClient = { chatWithModel: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -35,6 +184,7 @@ describe('CalorieService - getDailySummary', () => {
             countDocuments: jest.fn().mockReturnValue({ exec: jest.fn() }),
           },
         },
+        { provide: VercelAiClient, useValue: mockAiClient },
       ],
     }).compile();
 
@@ -109,8 +259,10 @@ describe('CalorieService - getDailySummary', () => {
 describe('CalorieService - source 字段', () => {
   let service: CalorieService;
   let mockModel: any;
+  let mockAiClient: { chatWithModel: jest.Mock };
 
   beforeEach(async () => {
+    mockAiClient = { chatWithModel: jest.fn() };
     mockModel = {
       create: jest.fn(),
       find: jest.fn().mockReturnValue({
@@ -135,6 +287,7 @@ describe('CalorieService - source 字段', () => {
       providers: [
         CalorieService,
         { provide: getModelToken(CalorieEntry.name), useValue: mockModel },
+        { provide: VercelAiClient, useValue: mockAiClient },
       ],
     }).compile();
 
@@ -193,8 +346,10 @@ describe('CalorieService - source 字段', () => {
 describe('CalorieService - externalId 去重', () => {
   let service: CalorieService;
   let mockModel: any;
+  let mockAiClient: { chatWithModel: jest.Mock };
 
   beforeEach(async () => {
+    mockAiClient = { chatWithModel: jest.fn() };
     mockModel = {
       create: jest.fn(),
       find: jest.fn().mockReturnValue({
@@ -219,6 +374,7 @@ describe('CalorieService - externalId 去重', () => {
       providers: [
         CalorieService,
         { provide: getModelToken(CalorieEntry.name), useValue: mockModel },
+        { provide: VercelAiClient, useValue: mockAiClient },
       ],
     }).compile();
 
