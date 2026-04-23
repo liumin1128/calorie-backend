@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"}],"uuid":"9200dbe17cd5430c8f598e32932256f9","collectionName":"calorie","type":"collection"}

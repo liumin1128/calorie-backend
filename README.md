@@ -96,3 +96,8 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+
+podman run --rm -v "$(pwd):/data" mongo:latest mongodump --uri="mongodb+srv://970568830:SQcRHyV1mBm2BM5Z@cluster0.mpblvjc.mongodb.net/" --out=/data/backup
+
+podman run --rm -v "$(pwd):/data" mongo:latest mongorestore --uri="mongodb+srv://970568830:SQcRHyV1mBm2BM5Z@cluster0.mpblvjc.mongodb.net/" /data/backup
+
