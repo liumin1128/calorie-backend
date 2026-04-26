@@ -9,6 +9,7 @@ import {
   Max,
   IsArray,
   ArrayMaxSize,
+  IsUrl,
 } from 'class-validator';
 import { Gender } from '../../auth/schemas/user.schema';
 
@@ -29,6 +30,10 @@ export class UpdateProfileDto {
   @IsOptional()
   @MaxLength(200)
   signature?: string;
+
+  @IsUrl({}, { message: '头像地址必须为合法 URL' })
+  @IsOptional()
+  avatar?: string;
 
   @IsNumber()
   @Min(30)

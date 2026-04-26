@@ -29,6 +29,9 @@ export class User {
   @Prop({ trim: true, maxlength: 200 })
   signature?: string;
 
+  @Prop({ trim: true })
+  avatar?: string;
+
   @Prop({ type: Number, min: 30, max: 300 })
   targetWeight?: number;
 

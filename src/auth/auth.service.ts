@@ -74,6 +74,7 @@ export class AuthService {
         gender: user.gender ?? null,
         birthday: user.birthday ?? null,
         signature: user.signature ?? null,
+        avatar: user.avatar ?? null,
         latestHeight: latestDynamicData.get('height') ?? null,
         latestWeight: latestDynamicData.get('weight') ?? null,
       },

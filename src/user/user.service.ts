@@ -57,6 +57,7 @@ export class UserService {
       gender: user.gender ?? null,
       birthday: user.birthday ?? null,
       signature: user.signature ?? null,
+      avatar: user.avatar ?? null,
       targetWeight: user.targetWeight ?? null,
       healthConditions: user.healthConditions?.length
         ? user.healthConditions
