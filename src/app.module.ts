@@ -11,6 +11,7 @@ import { UserModule } from './user/user.module';
 import { DynamicDataModule } from './dynamic-data/dynamic-data.module';
 import { VercelGatewayModule } from './vercel-gateway/vercel-gateway.module';
 import { FoodModule } from './food/food.module';
+import { StorageModule } from './storage/storage.module';
 import { WaterModule } from './water/water.module';
 
 @Module({
@@ -31,6 +32,7 @@ import { WaterModule } from './water/water.module';
     DynamicDataModule,
     VercelGatewayModule,
     FoodModule,
+    StorageModule,
     WaterModule,
   ],
   controllers: [AppController],
