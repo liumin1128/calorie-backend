@@ -9,6 +9,7 @@ import {
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { randomUUID } from 'crypto';
 
 export interface StorageUploadInput {
   key: string;
@@ -24,12 +25,42 @@ export interface StorageSignedUrlOptions {
   downloadFileName?: string;
 }
 
+export interface StoragePresignedUploadInput {
+  key: string;
+  contentType: string;
+  expiresIn?: number;
+  cacheControl?: string;
+}
+
+export interface StoragePresignedUploadResult {
+  key: string;
+  uploadUrl: string;
+  method: 'PUT';
+  headers: {
+    'Content-Type': string;
+    'Cache-Control'?: string;
+  };
+  expiresIn: number;
+  publicUrl: string | null;
+}
+
 @Injectable()
 export class StorageService {
   private readonly logger = new Logger(StorageService.name);
   private readonly bucket: string;
   private readonly publicBaseUrl?: string;
   private readonly client: S3Client;
+  private static readonly IMAGE_EXTENSION_BY_CONTENT_TYPE: Record<
+    string,
+    string
+  > = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp',
+    'image/heic': 'heic',
+    'image/heif': 'heif',
+    'image/gif': 'gif',
+  };
 
   constructor(private readonly configService: ConfigService) {
     const accessKeyId =
@@ -149,6 +180,59 @@ export class StorageService {
     );
   }
 
+  async getSignedUploadUrl(
+    input: StoragePresignedUploadInput,
+  ): Promise<StoragePresignedUploadResult> {
+    const normalizedKey = this.normalizeKey(input.key);
+    const expiresIn = this.normalizeExpiresIn(input.expiresIn ?? 600);
+
+    const uploadUrl = await this.execute(
+      () =>
+        getSignedUrl(
+          this.client,
+          new PutObjectCommand({
+            Bucket: this.bucket,
+            Key: normalizedKey,
+            ContentType: input.contentType,
+            CacheControl: input.cacheControl,
+          }),
+          {
+            expiresIn,
+            signableHeaders: new Set(['content-type']),
+          },
+        ),
+      '生成上传地址失败',
+      { key: normalizedKey },
+    );
+
+    return {
+      key: normalizedKey,
+      uploadUrl,
+      method: 'PUT',
+      headers: {
+        'Content-Type': input.contentType,
+        ...(input.cacheControl
+          ? { 'Cache-Control': input.cacheControl }
+          : undefined),
+      },
+      expiresIn,
+      publicUrl: this.getPublicUrl(normalizedKey),
+    };
+  }
+
+  buildObjectKey(params: {
+    businessType: string;
+    userId: string;
+    contentType: string;
+  }): string {
+    const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const extension = this.getExtensionByContentType(params.contentType);
+    const safeBusinessType = params.businessType.replace(/[^a-z0-9-_]/gi, '-');
+    const safeUserId = params.userId.replace(/[^a-zA-Z0-9-_]/g, '-');
+
+    return `${safeBusinessType}/${safeUserId}/${today}/${randomUUID()}.${extension}`;
+  }
+
   getPublicUrl(key: string): string | null {
     const normalizedKey = this.normalizeKey(key);
     if (!this.publicBaseUrl) {
@@ -176,6 +260,18 @@ export class StorageService {
     }
 
     return Math.min(Math.max(Math.floor(expiresIn), 1), 60 * 60 * 24 * 7);
+  }
+
+  private getExtensionByContentType(contentType: string): string {
+    const normalizedContentType = contentType.trim().toLowerCase();
+    const extension =
+      StorageService.IMAGE_EXTENSION_BY_CONTENT_TYPE[normalizedContentType];
+
+    if (!extension) {
+      throw new HttpException('暂不支持该图片类型', HttpStatus.BAD_REQUEST);
+    }
+
+    return extension;
   }
 
   private async execute<T>(
