@@ -29,7 +29,6 @@ export interface StoragePresignedUploadInput {
   key: string;
   contentType: string;
   expiresIn?: number;
-  cacheControl?: string;
 }
 
 export interface StoragePresignedUploadResult {
@@ -38,7 +37,6 @@ export interface StoragePresignedUploadResult {
   method: 'PUT';
   headers: {
     'Content-Type': string;
-    'Cache-Control'?: string;
   };
   expiresIn: number;
   publicUrl: string | null;
@@ -80,6 +78,8 @@ export class StorageService {
     this.client = new S3Client({
       region,
       endpoint,
+      requestChecksumCalculation: 'WHEN_REQUIRED',
+      responseChecksumValidation: 'WHEN_REQUIRED',
       credentials: {
         accessKeyId,
         secretAccessKey,
@@ -194,7 +194,6 @@ export class StorageService {
             Bucket: this.bucket,
             Key: normalizedKey,
             ContentType: input.contentType,
-            CacheControl: input.cacheControl,
           }),
           {
             expiresIn,
@@ -211,9 +210,6 @@ export class StorageService {
       method: 'PUT',
       headers: {
         'Content-Type': input.contentType,
-        ...(input.cacheControl
-          ? { 'Cache-Control': input.cacheControl }
-          : undefined),
       },
       expiresIn,
       publicUrl: this.getPublicUrl(normalizedKey),

@@ -42,7 +42,6 @@ export class StorageController {
       key,
       contentType: dto.contentType,
       expiresIn: 600,
-      cacheControl: 'public, max-age=31536000, immutable',
     });
   }
 
